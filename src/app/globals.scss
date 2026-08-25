@@ -1,0 +1,405 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/* Monocode Desktop — token architecture                               */
+/* Палитра выводится из пользовательских --theme-hue/--theme-saturation */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --theme-hue: 213;
+  --theme-saturation: 40%;
+
+  /* контент: тот же hue/sat, высокая светлота (светлая тема) */
+  --content-hsl: var(--theme-hue) var(--theme-saturation) 14%;
+  --background-hsl: var(--theme-hue) calc(var(--theme-saturation) * 0.35) 96%;
+  --surface-hsl: 0 0% 100%;
+  --surface-line-hsl: var(--theme-hue) calc(var(--theme-saturation) * 0.3) 88%;
+  --ghost-hsl: var(--theme-hue) calc(var(--theme-saturation) * 0.25) 94%;
+  --ghost-text-hsl: var(--theme-hue) calc(var(--theme-saturation) * 0.2) 38%;
+}
+
+.dark {
+  /* контент: бледно-окрашенный белый, фон: тёмный тонированный */
+  --content-hsl: var(--theme-hue) calc(var(--theme-saturation) * 0.45) 91%;
+  --background-hsl: var(--theme-hue) calc(var(--theme-saturation) * 0.5) 7%;
+  --surface-hsl: var(--theme-hue) calc(var(--theme-saturation) * 0.45) 10.5%;
+  --surface-line-hsl: var(--theme-hue) calc(var(--theme-saturation) * 0.4) 19%;
+  --ghost-hsl: var(--theme-hue) calc(var(--theme-saturation) * 0.4) 14%;
+  --ghost-text-hsl: var(--theme-hue) calc(var(--theme-saturation) * 0.22) 62%;
+}
+
+:root,
+.dark {
+  --accent-brand-hsl: 211 92% 62%; /* фирменный акцент приложения */
+
+  --background: var(--background-hsl);
+  --foreground: var(--content-hsl);
+  --card: var(--surface-hsl);
+  --card-foreground: var(--content-hsl);
+  --popover: var(--background-hsl);
+  --popover-foreground: var(--content-hsl);
+  --primary: var(--accent-brand-hsl);
+  --primary-foreground: 0 0% 100%;
+  --secondary: var(--ghost-hsl);
+  --secondary-foreground: var(--content-hsl);
+  --muted: var(--ghost-hsl);
+  --muted-foreground: var(--ghost-text-hsl);
+  --accent: var(--ghost-hsl);
+  --accent-foreground: var(--content-hsl);
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+  --border: var(--surface-line-hsl);
+  --input: var(--surface-line-hsl);
+  --ring: var(--accent-brand-hsl);
+  --radius: 0.5rem;
+}
+
+::selection {
+  color: hsl(var(--background));
+  background-color: hsl(var(--accent-brand-hsl));
+}
+
+* {
+  @apply border-border;
+}
+
+/* Стабильный скроллбар: страница не дёргается по горизонтали,
+   когда контент меняет высоту при переходах между вкладками */
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  @apply bg-background text-foreground;
+}
+
+/* ------------------------------------------------------------------ */
+/* Авторские keyframes                                                 */
+/* ------------------------------------------------------------------ */
+
+:root {
+  /* фирменная «smooth-out» кривая приложения */
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 3.1 — въезд toast/карточек: 180ms, фирменная smooth-out кривая */
+@keyframes approval-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.approval-toast {
+  animation: approval-toast-in 180ms var(--ease-smooth-out) both;
+}
+
+/* Появление контента: fade-up с размытием (по образцу luma-fade-up) */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.fade-up {
+  animation: fade-up 420ms var(--ease-smooth-out) both;
+}
+
+/* Лёгкий переход между вкладками: коротко, без blur и без
+   ощутимого сдвига — страница мягко проявляется */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-enter 200ms var(--ease-smooth-out) both;
+}
+
+.stagger-fade-up > * {
+  animation: fade-up 420ms var(--ease-smooth-out) both;
+}
+
+.stagger-fade-up > :nth-child(2) {
+  animation-delay: 55ms;
+}
+.stagger-fade-up > :nth-child(3) {
+  animation-delay: 110ms;
+}
+.stagger-fade-up > :nth-child(4) {
+  animation-delay: 165ms;
+}
+.stagger-fade-up > :nth-child(5) {
+  animation-delay: 220ms;
+}
+.stagger-fade-up > :nth-child(6) {
+  animation-delay: 275ms;
+}
+.stagger-fade-up > :nth-child(7) {
+  animation-delay: 330ms;
+}
+.stagger-fade-up > :nth-child(n + 8) {
+  animation-delay: 385ms;
+}
+
+/* Плавное появление оверлеев (генерация PDF и т.п.) */
+@keyframes overlay-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.overlay-fade {
+  animation: overlay-fade 220ms var(--ease-smooth-out) both;
+}
+
+/* Скрытый скроллбар для горизонтальных лент чипов */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* 404 — лого бежит, спотыкается и падает (зациклено)                  */
+/* ------------------------------------------------------------------ */
+
+.logo-run-stage {
+  position: relative;
+  height: 7rem;
+  width: 100%;
+  overflow: hidden;
+}
+
+.logo-run-stage::after {
+  content: '';
+  position: absolute;
+  right: 6%;
+  bottom: 0.9rem;
+  height: 3px;
+  width: 34%;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.06);
+}
+
+.dark .logo-run-stage::after {
+  background: rgb(255 255 255 / 0.07);
+}
+
+.logo-runner {
+  position: absolute;
+  bottom: 0.9rem;
+  left: 38%;
+  transform-origin: 50% 88%;
+  animation: logo-run 4.6s cubic-bezier(0.36, 0.02, 0.4, 1) infinite;
+}
+
+@keyframes logo-run {
+  0% {
+    left: -16%;
+    transform: rotate(0deg);
+  }
+  11% {
+    transform: rotate(0deg) translateY(-18px);
+  }
+  16% {
+    transform: rotate(0deg) translateY(0);
+  }
+  27% {
+    transform: rotate(0deg) translateY(-15px);
+  }
+  32% {
+    transform: rotate(0deg) translateY(0);
+  }
+  44% {
+    transform: rotate(0deg) translateY(-13px);
+  }
+  49% {
+    left: 72%;
+    transform: rotate(0deg) translateY(0);
+  }
+  56% {
+    left: 82%;
+    transform: rotate(24deg) translateY(-4px);
+  }
+  63% {
+    left: 89%;
+    transform: rotate(78deg) translateY(-2px);
+  }
+  67% {
+    left: 92%;
+    transform: rotate(92deg) translateY(10px);
+  }
+  86% {
+    left: 92%;
+    transform: rotate(92deg) translateY(10px);
+    opacity: 1;
+  }
+  93% {
+    left: 92%;
+    transform: rotate(92deg) translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    left: -16%;
+    transform: rotate(0deg);
+    opacity: 0;
+  }
+}
+
+/* Плавная смена темы: класс вешается на <html> на время переключения */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition:
+    background-color 420ms var(--ease-smooth-out),
+    border-color 420ms var(--ease-smooth-out),
+    color 280ms var(--ease-smooth-out),
+    fill 420ms var(--ease-smooth-out),
+    stroke 420ms var(--ease-smooth-out) !important;
+}
+
+/* 3.2 — бегущий блик по тексту; параметризуется --spread/--shimmer-duration */
+.shimmer-text {
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - var(--spread, 24px)),
+      hsl(var(--content-hsl)) calc(50%),
+      transparent calc(50% + var(--spread, 24px))
+    ),
+    linear-gradient(
+      hsl(var(--content-hsl) / 0.4),
+      hsl(var(--content-hsl) / 0.4)
+    );
+  background-size:
+    250% 100%,
+    auto;
+  background-repeat: no-repeat, padding-box;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shimmer-text var(--shimmer-duration, 2s) linear infinite;
+}
+
+@keyframes shimmer-text {
+  from {
+    background-position: 100% center;
+  }
+  to {
+    background-position: 0% center;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Скроллбар в терминальном стиле                                      */
+/* ------------------------------------------------------------------ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--surface-line-hsl)) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: hsl(var(--surface-line-hsl));
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ------------------------------------------------------------------ */
+/* Boot-splash                                                         */
+/* ------------------------------------------------------------------ */
+
+#boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  background-color: hsl(var(--background));
+  transition: opacity 0.12s ease;
+}
+
+#boot-splash.boot-splash-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Печать / экспорт табеля в PDF                                       */
+/* ------------------------------------------------------------------ */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  #print-root {
+    position: static !important;
+    overflow: visible !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* prefers-reduced-motion — глобальный сброс                           */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .shimmer-text {
+    animation: none !important;
+    color: inherit !important;
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+  }
+}
