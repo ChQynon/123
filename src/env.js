@@ -3,28 +3,35 @@ import { z } from 'zod'
 
 export const env = createEnv({
   /**
-   * Specify your server-side environment variables schema here. This way you can ensure the app
-   * isn't built with invalid env vars.
+   * Server-side variables. On hosting (Vercel и т.п.) они могут быть
+   * не заданы — поэтому у всех есть безопасные значения по умолчанию.
    */
   server: {
-    NODE_ENV: z.enum(['development', 'test', 'production']),
-    RUNTIME: z.enum(['edge', 'node']),
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    RUNTIME: z.enum(['edge', 'node']).default('node'),
   },
 
   /**
-   * Specify your client-side environment variables schema here. This way you can ensure the app
-   * isn't built with invalid env vars. To expose them to the client, prefix them with
-   * `NEXT_PUBLIC_`.
+   * Client-side переменные. Значения по умолчанию позволяют
+   * собираться без настройки Environment Variables в Vercel.
    */
   client: {
-    NEXT_PUBLIC_CONTACT_LINK: z.string().url(),
-    NEXT_PUBLIC_REPO_LINK: z.string().url(),
-    NEXT_PUBLIC_DONATE_LINK: z.string().url(),
+    NEXT_PUBLIC_CONTACT_LINK: z
+      .string()
+      .url()
+      .default('https://t.me/academia_nis'),
+    NEXT_PUBLIC_REPO_LINK: z
+      .string()
+      .url()
+      .default('https://github.com/ChQynon/123'),
+    NEXT_PUBLIC_DONATE_LINK: z
+      .string()
+      .url()
+      .default('https://www.donationalerts.com/r/alyxmp4'),
   },
 
   /**
-   * You can't destruct `process.env` as a regular object in the Next.js edge runtimes (e.g.
-   * middlewares) or client-side so we need to destruct manually.
+   * Нельзя деструктурировать process.env на edge/client — разбираем вручную.
    */
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
@@ -33,14 +40,6 @@ export const env = createEnv({
     NEXT_PUBLIC_REPO_LINK: process.env.NEXT_PUBLIC_REPO_LINK,
     NEXT_PUBLIC_DONATE_LINK: process.env.NEXT_PUBLIC_DONATE_LINK,
   },
-  /**
-   * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
-   * useful for Docker builds.
-   */
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
-  /**
-   * Makes it so that empty strings are treated as undefined. `SOME_VAR: z.string()` and
-   * `SOME_VAR=''` will throw an error.
-   */
   emptyStringAsUndefined: true,
 })
