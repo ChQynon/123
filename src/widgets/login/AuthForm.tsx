@@ -93,9 +93,14 @@ const AuthForm = () => {
           control={form.control}
           name="iin"
           render={({ field }) => (
-            <FormItem className="mb-1 mt-1">
+            <FormItem className="mb-2 mt-1">
               <FormControl>
-                <Input placeholder="ИИН" autoComplete="username" {...field} />
+                <Input
+                  className="h-11 px-3.5 text-base"
+                  placeholder="ИИН"
+                  autoComplete="username"
+                  {...field}
+                />
               </FormControl>
               <FormMessage className="pb-1 leading-none text-red-600" />
             </FormItem>
@@ -105,9 +110,10 @@ const AuthForm = () => {
           control={form.control}
           name="password"
           render={({ field }) => (
-            <FormItem className="mb-1 mt-1">
+            <FormItem className="mb-2 mt-1">
               <FormControl>
                 <Input
+                  className="h-11 px-3.5 text-base"
                   placeholder="Пароль"
                   autoComplete="current-password"
                   type="password"
@@ -120,7 +126,7 @@ const AuthForm = () => {
         />
         <Button
           type="submit"
-          className="mt-2 w-full"
+          className="mt-3 h-11 w-full text-base"
           disabled={form.formState.isSubmitting}
         >
           Продолжить
