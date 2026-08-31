@@ -20,9 +20,9 @@ export const metadata = {
   description:
     'Школьный дневник НИШ: оценки, журнал, табель, расписание и калькулятор СОР/СОЧ.',
   icons: [
-    { rel: 'icon', url: '/logo.svg', type: 'image/svg+xml' },
-    { rel: 'icon', url: '/logo.svg' },
-    { rel: 'apple-touch-icon', url: '/logo.svg' },
+    { rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' },
+    { rel: 'icon', url: '/favicon.ico' },
+    { rel: 'apple-touch-icon', url: '/apple-touch-icon.png' },
   ],
   openGraph: {
     type: 'website',
