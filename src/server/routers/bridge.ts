@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '@/app/api/[[...route]]/route'
 import { decode } from '@/lib/token/jwt'
-import { Userinfo } from '@/shared/types'
+import { Schedule, Userinfo } from '@/shared/types'
 import { getAdditionalUserInfo } from '@/features/getAdditionalUserInfo'
 import { Session } from '@/lib/token/resolver'
 import { getJournal } from '@/features/getJournal'
@@ -11,7 +11,12 @@ import { getJournalElement } from '@/features/getJournalElement'
 import { isAxiosError } from 'axios'
 import { getReports } from '@/features/getReports'
 import { getSchedule } from '@/features/getSchedule'
+import { getEduPageSchedule } from '@/features/getEduPageSchedule'
 import { getCityNameByAbbr } from '@/shared/constants/cities'
+import {
+  getEduPageHost,
+  hasPublicEduPageTimetable,
+} from '@/shared/constants/edupage'
 
 const app = new Hono<{
   Variables: {
@@ -120,6 +125,46 @@ app.get('/reports', async (c) => {
   }
 })
 
+/*
+  Расписание собирается из двух источников, по очереди:
+
+  1. EduPage — публичное расписание школы (то же, что на её официальном
+     сайте). Работает без токена и покрывает большинство городов.
+  2. micros — официальный сервис расписания НИШ. Требует токен, зато
+     заведён для всех 19 городов проекта, включая те школы, которые
+     расписание в EduPage не публикуют.
+
+  Первый источник, который отдал данные, выигрывает. Если оба ответили
+  «данных нет» (а не сетевой ошибкой) — значит школа расписание не
+  публикует, и это отдаётся отдельным кодом, чтобы UI показал понятный
+  текст вместо «сервис недоступен». В конце EduPage пробуется ещё раз,
+  уже для школ без опубликованного расписания.
+*/
+const SCHEDULE_NOT_PUBLISHED = 'SCHEDULE_NOT_PUBLISHED'
+const SCHEDULE_UNAVAILABLE = 'SCHEDULE_UNAVAILABLE'
+
+const describeFailure = (e: unknown): string => {
+  if (isAxiosError(e)) {
+    const status = e.response?.status
+    const message = (e.response?.data as { message?: string } | undefined)
+      ?.message
+
+    return `HTTP ${status ?? 'ERR'}${message ? ' ' + message : ''}`
+  }
+
+  return e instanceof Error ? e.message : 'unknown'
+}
+
+/*
+  «Данных нет» — это отсутствие опубликованного расписания в EduPage или
+  ответ 400/404 от micros («нет доступа к данным», город не найден).
+  Такие случаи не лечатся повтором запроса, в отличие от 401 (истёк
+  токен) или 5xx — это уже сбой сервиса, и о нём честнее сказать прямо.
+*/
+const isMissingDataFailure = (failure: string): boolean =>
+  /EDUPAGE_(TIMETABLE|CLASSES|CLASS)_NOT_FOUND/.test(failure) ||
+  /HTTP (400|404)\b/.test(failure)
+
 app.get('/schedule', async (c) => {
   const session = c.get('session')
   const cityName = getCityNameByAbbr(session.city)
@@ -137,30 +182,77 @@ app.get('/schedule', async (c) => {
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .safeParse(c.req.query('date'))
+  const requestedDate = date.success ? date.data : undefined
 
-  try {
-    const schedule = await getSchedule(
-      session.accessToken,
-      cityName,
-      date.success ? date.data : undefined,
-    )
+  const failures: string[] = []
 
-    return c.json(schedule)
-  } catch (e) {
-    console.log(e)
-
-    throw new HTTPException(503, {
-      res: Response.json(
-        {
-          message: 'Service unavailable',
-          cause: 'Schedule microservice is currently unavailable / down',
-        },
-        {
-          status: 503,
-        },
-      ),
+  const loadFromEduPage = () =>
+    getEduPageSchedule(session.accessToken, session.city, {
+      date: requestedDate,
+      classQuery: c.req.query('class') ?? null,
     })
+
+  const loadFromMicros = () =>
+    getSchedule(session.accessToken, cityName, requestedDate)
+
+  /* Источник, который упал, не роняет запрос — просто идём к следующему. */
+  const trySource = async (
+    name: string,
+    load: () => Promise<Schedule>,
+  ): Promise<Schedule | null> => {
+    try {
+      return await load()
+    } catch (e) {
+      failures.push(name + ': ' + describeFailure(e))
+
+      return null
+    }
   }
+
+  const publishesInEduPage = hasPublicEduPageTimetable(session.city)
+
+  /* 1. EduPage — публичное расписание школы, без токена. */
+  if (publishesInEduPage) {
+    const schedule = await trySource('edupage', loadFromEduPage)
+
+    if (schedule) return c.json(schedule)
+  }
+
+  /* 2. micros — официальный сервис расписания, покрывает все города. */
+  const fromMicros = await trySource('micros', loadFromMicros)
+
+  if (fromMicros) return c.json(fromMicros)
+
+  /*
+    3. EduPage для школ, которые на момент проверки расписание не
+    публиковали. Это состояние может измениться, поэтому пробуем ещё раз
+    как последний шанс — раньше micros его перекрывал.
+  */
+  if (!publishesInEduPage && getEduPageHost(session.city)) {
+    const schedule = await trySource('edupage', loadFromEduPage)
+
+    if (schedule) return c.json(schedule)
+  }
+
+  console.error('[schedule]', session.city, failures)
+
+  const notPublished = failures.every(isMissingDataFailure)
+
+  throw new HTTPException(notPublished ? 404 : 503, {
+    res: Response.json(
+      {
+        message: notPublished
+          ? 'Schedule is not published'
+          : 'Schedule service is unavailable',
+        cause: notPublished
+          ? 'Neither EduPage nor micros has a published schedule for this school'
+          : 'Schedule sources are currently unavailable / down',
+        code: notPublished ? SCHEDULE_NOT_PUBLISHED : SCHEDULE_UNAVAILABLE,
+        details: failures.join(' | '),
+      },
+      { status: notPublished ? 404 : 503 },
+    ),
+  })
 })
 
 export default app

@@ -1,14 +1,7 @@
 import React, { FC } from 'react'
 import { cn } from '@/lib/utils'
 import { DoorOpen } from '@phosphor-icons/react/dist/ssr'
-
-type ScheduleLesson = {
-  number: number
-  subjectName: { kk: string; ru: string; en: string }
-  teacher: string
-  classroom: string | never
-  isReplacement: boolean
-}
+import type { ScheduleLesson } from '@/shared/types'
 
 const BELL_SCHEDULE: Record<number, string> = {
   0: '08:00 – 08:25',
@@ -29,7 +22,14 @@ type ScheduleLessonCardProps = {
 export const ScheduleLessonCard: FC<ScheduleLessonCardProps> = ({
   lesson,
 }) => {
-  const bellTime = BELL_SCHEDULE[lesson.number] ?? ''
+  /* Время из расписания школы в приоритете, таблица звонков — запасной вариант */
+  const time = lesson.time?.length
+    ? lesson.time
+    : (BELL_SCHEDULE[lesson.number] ?? '')
+  const numberLabel =
+    lesson.numberEnd && lesson.numberEnd > lesson.number
+      ? `${lesson.number}–${lesson.numberEnd}`
+      : `${lesson.number}`
 
   return (
     <div
@@ -41,12 +41,10 @@ export const ScheduleLessonCard: FC<ScheduleLessonCardProps> = ({
       )}
     >
       <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center rounded-lg bg-content/5 px-1 py-2 font-mono">
-        <span className="text-xl font-bold leading-none">
-          {lesson.number}
-        </span>
-        {bellTime && (
+        <span className="text-xl font-bold leading-none">{numberLabel}</span>
+        {time && (
           <span className="mt-1 text-center text-[10px] leading-tight text-content/45">
-            {bellTime}
+            {time}
           </span>
         )}
       </div>

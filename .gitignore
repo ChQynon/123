@@ -49,3 +49,6 @@ yarn-error.log*
 
 # pnpm temp
 pnpm-lock.yaml.*
+
+# локальные данные ассистента (память проекта, кеши)
+.workbuddy-ai/

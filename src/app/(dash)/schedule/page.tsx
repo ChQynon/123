@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
+import { isAxiosError } from 'axios'
 import useSchedule from '@/lib/hooks/useSchedule'
 import ScheduleLessonCard from '@/widgets/schedule/ScheduleLessonCard'
 import { Button } from '@/components/ui/button'
@@ -61,7 +62,17 @@ const getWeekDays = (selected: Date): DayCell[] => {
 const Page = () => {
   const [selected, setSelected] = useState<Date>(() => new Date())
   const selectedISO = toISODate(selected)
-  const { data, isLoading, isError, refetch } = useSchedule(selectedISO)
+  const { data, isLoading, isError, error, refetch } = useSchedule(selectedISO)
+
+  /*
+    Школа не публикует расписание ни в EduPage, ни в СУШ — это не сбой
+    сервиса, поэтому показываем не «попробуйте позже», а пояснение.
+  */
+  const scheduleNotPublished =
+    isError &&
+    isAxiosError(error) &&
+    (error.response?.data as { code?: string } | undefined)?.code ===
+      'SCHEDULE_NOT_PUBLISHED'
 
   const weekDays = useMemo(() => getWeekDays(selected), [selected])
 
@@ -172,8 +183,22 @@ const Page = () => {
         </div>
       )}
 
+      {/* Расписание не опубликовано школой */}
+      {!isLoading && scheduleNotPublished && (
+        <div className="page-enter flex flex-col items-center py-14 text-center">
+          <CalendarBlank size={56} className="mx-auto text-content/30" />
+          <h2 className="mt-3 text-xl font-semibold sm:text-2xl">
+            Расписание не опубликовано
+          </h2>
+          <p className="mt-1 max-w-72 text-sm leading-5 text-muted-foreground">
+            Школа пока не опубликовала расписание в открытом доступе.
+            Актуальное расписание уточняйте в учебной части.
+          </p>
+        </div>
+      )}
+
       {/* Ошибка */}
-      {!isLoading && isError && (
+      {!isLoading && isError && !scheduleNotPublished && (
         <div className="flex flex-col items-center py-14 text-center">
           <LinkBreak size={56} className="mx-auto text-red-600" />
           <h2 className="mt-3 text-xl font-semibold sm:text-2xl">

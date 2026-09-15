@@ -13,7 +13,7 @@ const CITIES: Record<string, string> = {
   Kokshetau: 'kt',
   Karaganda: 'krg',
   Atyrau: 'atr',
-  Aktobe: 'akt',
+  Aktobe: 'akb',
   Aktau: 'akt',
   Astana_FMSH: 'ast',
   Almaty_HBSH: 'hbalm',
@@ -25,8 +25,7 @@ export default CITIES
 export type CityAbbr = (typeof CITIES)[keyof typeof CITIES]
 export type CityFullName = keyof typeof CITIES
 
-/* Обратная карта: аббревиатура -> полное имя города.
-   Первое вхождение выигрывает (коллизия akt: Aktobe/Aktau). */
+/* Обратная карта: аббревиатура -> полное имя города. */
 const CITY_NAME_BY_ABBR: Record<string, CityFullName> = {}
 
 for (const [name, abbr] of Object.entries(CITIES)) {

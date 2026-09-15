@@ -57,31 +57,39 @@ export type AdditionalUserInfo = {
   }
 }
 
-export type Schedule = {
-  scheduleDays: {
-    lessons: {
-      number: number
-      subjectName: {
-        kk: string
-        ru: string
-        en: string
-      }
-      teacher: string
-      classroom: string | never
-      isReplacement: boolean
-    }[]
-    date: string
-    scheduleNotWorkingDay: {
-      isNotWorkingDay: boolean
-      isWeekend: boolean
-      isHoliday: boolean
-      calendarEventName: {
-        kk: string
-        ru: string
-        en: string
-      }
+export type ScheduleLesson = {
+  number: number
+  /* Номер последнего периода для спаренных уроков (1–2) */
+  numberEnd?: number | null
+  /* Время урока из расписания школы, если сервис его отдаёт */
+  time?: string
+  subjectName: {
+    kk: string
+    ru: string
+    en: string
+  }
+  teacher: string
+  classroom: string | never
+  isReplacement: boolean
+}
+
+export type ScheduleDay = {
+  lessons: ScheduleLesson[]
+  date: string
+  scheduleNotWorkingDay: {
+    isNotWorkingDay: boolean
+    isWeekend: boolean
+    isHoliday: boolean
+    calendarEventName: {
+      kk: string
+      ru: string
+      en: string
     }
-  }[]
+  }
+}
+
+export type Schedule = {
+  scheduleDays: ScheduleDay[]
 }
 
 export type Journal = [
