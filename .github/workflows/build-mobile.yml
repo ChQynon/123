@@ -122,10 +122,11 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             clean build
           
+          OUTPUT_ZIP="$(pwd)/dist/adaption-1.0.0-ios-simulator.zip"
           cd ios/build/Build/Products/Release-iphonesimulator
-          zip -r ../../../../../apps/mobile/dist/adaption-1.0.0-ios-simulator.zip adaption.app
-          cd ../../../../..
-          ls -la apps/mobile/dist/
+          zip -r "$OUTPUT_ZIP" adaption.app
+          cd -
+          ls -la dist/
 
       - name: Build iOS Unsigned IPA (Sideloadable)
         continue-on-error: true
@@ -143,10 +144,13 @@ jobs:
             clean build || true
           
           if [ -d "ios/build-device/Build/Products/Release-iphoneos/adaption.app" ]; then
+            IPA_OUTPUT="$(pwd)/dist/adaption-1.0.0-unsigned.ipa"
+            cd ios/build-device/Build/Products/Release-iphoneos
             mkdir -p Payload
-            cp -R ios/build-device/Build/Products/Release-iphoneos/adaption.app Payload/
-            zip -r dist/adaption-1.0.0-unsigned.ipa Payload
+            cp -R adaption.app Payload/
+            zip -r "$IPA_OUTPUT" Payload
             rm -rf Payload
+            cd -
             ls -la dist/
           fi
 
