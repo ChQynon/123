@@ -18,60 +18,11 @@ on:
 
 jobs:
   # ============================================================
-  # Android — Прямая сборка APK через Gradle + Android SDK
+  # EAS Cloud Build — Сборка Android APK и iOS IPA
   # ============================================================
-  build-android:
-    name: Build Android (APK)
+  build-mobile:
+    name: Build Mobile App (EAS)
     runs-on: ubuntu-latest
-    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android' || github.event_name == 'push' || github.event.inputs.platform == ''
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java (JDK 17)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install dependencies
-        working-directory: apps/mobile
-        run: npm install
-
-      - name: Prebuild Android project
-        working-directory: apps/mobile
-        run: npx expo prebuild --platform android --clean --no-install
-
-      - name: Build Android APK
-        working-directory: apps/mobile/android
-        run: |
-          chmod +x ./gradlew
-          ./gradlew assembleRelease --no-daemon
-
-      - name: Organize APK
-        run: |
-          mkdir -p apps/mobile/dist
-          find apps/mobile/android/app/build/outputs/apk -name "*.apk" -exec cp {} apps/mobile/dist/adaption.apk \;
-          ls -la apps/mobile/dist/
-
-      - name: Upload Android APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: apps/mobile/dist/adaption.apk
-
-  # ============================================================
-  # iOS — Сборка под iOS (Simulator .app / EAS IPA)
-  # ============================================================
-  build-ios:
-    name: Build iOS
-    runs-on: macos-latest
-    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios' || github.event_name == 'push' || github.event.inputs.platform == ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -81,70 +32,35 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
       - name: Install dependencies
         working-directory: apps/mobile
         run: npm install
 
-      - name: Prebuild iOS project
-        working-directory: apps/mobile
-        run: npx expo prebuild --platform ios --clean --no-install
-
-      - name: Build iOS Simulator Package
+      - name: Check EXPO_TOKEN and Build
         working-directory: apps/mobile
         run: |
-          mkdir -p dist
-          xcodebuild -workspace ios/adaption.xcworkspace \
-            -scheme adaption \
-            -configuration Release \
-            -sdk iphonesimulator \
-            -derivedDataPath ios/build \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            clean build
-          
-          # Архивируем .app для запуска на Mac в симуляторе
-          cd ios/build/Build/Products/Release-iphonesimulator
-          zip -r ../../../../../dist/adaption-ios-simulator.zip adaption.app
-          ls -la ../../../../../dist/
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "============================================================================"
+            echo "⚠️ ОШИБКА: Секрет EXPO_TOKEN не настроен в репозитории!"
+            echo "Для облачной сборки Android APK и iOS IPA выполните 2 шага:"
+            echo "1. Зайдите на https://expo.dev/settings/access-tokens и создайте токен."
+            echo "2. Добавьте его в репозиторий: Settings -> Secrets and variables -> Actions -> EXPO_TOKEN."
+            echo "============================================================================"
+            exit 1
+          fi
 
-      - name: EAS Build (if EXPO_TOKEN is provided)
-        if: env.EXPO_TOKEN != ''
-        working-directory: apps/mobile
-        run: |
-          npm install -g eas-cli
-          eas build --platform ios --profile production --non-interactive
+          PLATFORM="${{ github.event.inputs.platform }}"
+          if [ -z "$PLATFORM" ] || [ "$PLATFORM" = "all" ]; then
+            eas build --platform all --profile production --non-interactive
+          else
+            eas build --platform "$PLATFORM" --profile production --non-interactive
+          fi
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.EXPO_ANDROID_KEYSTORE_PASSWORD }}
+          EXPO_ANDROID_KEY_PASSWORD: ${{ secrets.EXPO_ANDROID_KEY_PASSWORD }}
           EXPO_IOS_DIST_P12_PASSWORD: ${{ secrets.EXPO_IOS_DIST_P12_PASSWORD }}
           EXPO_IOS_PROVISIONING_PROFILE: ${{ secrets.EXPO_IOS_PROVISIONING_PROFILE }}
-
-      - name: Upload iOS Simulator Archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-simulator-package
-          path: apps/mobile/dist/adaption-ios-simulator.zip
-
-  # ============================================================
-  # Release — Прикрепление файлов к GitHub Release
-  # ============================================================
-  release-mobile:
-    name: Attach to GitHub Release
-    needs: [build-android, build-ios]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Update GitHub Release with Mobile Files
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            android-apk/*.apk
-            ios-simulator-package/*.zip
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
