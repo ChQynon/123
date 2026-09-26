@@ -12,10 +12,12 @@ import {
 import useSettingsStore from '@/lib/hooks/store/useSettingsStore'
 import { Button } from '@/components/ui/button'
 import ResponsiveModal from '@/components/ui/responsive-modal'
-import { SignOut } from '@phosphor-icons/react'
+import { SignOut, ShieldCheck, FileText } from '@phosphor-icons/react'
 import { logout } from '@/server/actions/logout'
 import { useRouter } from 'next-nprogress-bar'
 import { useQueryClient } from '@tanstack/react-query'
+import Link from 'next/link'
+import PinSettings from '@/widgets/pin/PinSettings'
 
 const Page = () => {
   const { sort, updateSort } = useSettingsStore()
@@ -41,6 +43,23 @@ const Page = () => {
           </SelectContent>
         </Select>
       </div>
+      <div className="flex flex-row items-center justify-between py-1.5">
+        <p className="text-xl lg:text-2xl">Конфиденциальность</p>
+        <Link href="/privacy">
+          <Button variant="outline">
+            <ShieldCheck size={18} className="mr-1.5" /> Политика
+          </Button>
+        </Link>
+      </div>
+      <div className="flex flex-row items-center justify-between py-1.5">
+        <p className="text-xl lg:text-2xl">Условия использования</p>
+        <Link href="/terms">
+          <Button variant="outline">
+            <FileText size={18} className="mr-1.5" /> Условия
+          </Button>
+        </Link>
+      </div>
+      <PinSettings />
       <div className="flex flex-row items-center justify-between py-1.5">
         <p className="text-xl lg:text-2xl">Выход</p>
         <ResponsiveModal

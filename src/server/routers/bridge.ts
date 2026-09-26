@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { authMiddleware } from '@/app/api/[[...route]]/route'
+import { authMiddleware } from '@/server/middleware/auth'
 import { decode } from '@/lib/token/jwt'
 import { Schedule, Userinfo } from '@/shared/types'
 import { getAdditionalUserInfo } from '@/features/getAdditionalUserInfo'

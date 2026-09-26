@@ -92,7 +92,7 @@ body {
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: none;
   }
 }
 
@@ -109,8 +109,8 @@ body {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
+    transform: none;
+    filter: none;
   }
 }
 
@@ -119,7 +119,10 @@ body {
 }
 
 /* Лёгкий переход между вкладками: коротко, без blur и без
-   ощутимого сдвига — страница мягко проявляется */
+   ощутимого сдвига — страница мягко проявляется.
+   ВАЖНО: в конечном кадре transform: none, а не translateY(0),
+   иначе постоянный transform на контейнере «ломает»
+   position: fixed у дочерних элементов (навбар). */
 @keyframes page-enter {
   from {
     opacity: 0;
@@ -127,7 +130,7 @@ body {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -384,6 +387,100 @@ html.theme-switching *::after {
 /* ------------------------------------------------------------------ */
 /* prefers-reduced-motion — глобальный сброс                           */
 /* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/* Плавные переходы для интерактивных элементов                        */
+/* ------------------------------------------------------------------ */
+
+/* Плавный скролл */
+html {
+  scroll-behavior: smooth;
+}
+
+a,
+button,
+[role='button'],
+input,
+select,
+textarea {
+  transition:
+    background-color 200ms var(--ease-smooth-out),
+    border-color 200ms var(--ease-smooth-out),
+    color 200ms var(--ease-smooth-out),
+    opacity 200ms var(--ease-smooth-out),
+    transform 200ms var(--ease-smooth-out),
+    box-shadow 200ms var(--ease-smooth-out);
+}
+
+/* Микро-анимация нажатия на кнопки */
+button:active,
+[role='button']:active {
+  transform: scale(0.98);
+}
+
+/* Плавный hover для карточек */
+.rounded-xl.border,
+.rounded-lg.border {
+  transition:
+    background-color 200ms var(--ease-smooth-out),
+    border-color 200ms var(--ease-smooth-out),
+    box-shadow 220ms var(--ease-smooth-out),
+    transform 220ms var(--ease-smooth-out);
+}
+
+/* Плавный переход для иконок */
+svg {
+  transition:
+    transform 200ms var(--ease-smooth-out),
+    opacity 200ms var(--ease-smooth-out);
+}
+
+/* Плавное появление оверлеев Radix (модалки, дропдауны) */
+[data-state='open'] {
+  animation: overlay-fade 180ms var(--ease-smooth-out);
+}
+
+/* Плавный hover для ссылок навбара */
+nav a {
+  transition:
+    background-color 200ms var(--ease-smooth-out),
+    color 200ms var(--ease-smooth-out),
+    transform 200ms var(--ease-smooth-out);
+}
+
+nav a:hover {
+  transform: translateY(-1px);
+}
+
+/* Плавный hover для строк таблиц */
+tbody tr {
+  transition: background-color 180ms var(--ease-smooth-out);
+}
+
+/* Плавный hover для карточек расписания и журнала */
+.lesson-card {
+  transition:
+    transform 220ms var(--ease-smooth-out),
+    box-shadow 220ms var(--ease-smooth-out),
+    border-color 220ms var(--ease-smooth-out);
+}
+
+.lesson-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px hsl(var(--content-hsl) / 0.08);
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-8px);
+  }
+  40%, 80% {
+    transform: translateX(8px);
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,

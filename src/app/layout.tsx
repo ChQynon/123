@@ -1,4 +1,5 @@
-import React, { PropsWithChildren } from 'react'
+import React, { FC, PropsWithChildren } from 'react'
+import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
 import { ThemeProvider } from '@/lib/providers/ThemeProvider'
@@ -63,7 +64,7 @@ const jsonLd = {
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'KZT' },
 }
 
-export default function RootLayout({ children }: PropsWithChildren) {
+const RootLayout: FC<PropsWithChildren> = ({ children }) => {
   return (
     <html lang="ru" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
@@ -95,7 +96,25 @@ export default function RootLayout({ children }: PropsWithChildren) {
             </QueryProvider>
           </ProgressProvider>
         </div>
+
+        <footer className="relative z-10 mx-auto flex w-[92.5%] flex-row items-center justify-center gap-2 pb-3 sm:max-w-[47rem] print:hidden">
+          <Link
+            href="/privacy"
+            className="text-xs text-muted-foreground transition-opacity hover:opacity-70"
+          >
+            Конфиденциальность
+          </Link>
+          <span className="text-xs text-muted-foreground">·</span>
+          <Link
+            href="/terms"
+            className="text-xs text-muted-foreground transition-opacity hover:opacity-70"
+          >
+            Условия использования
+          </Link>
+        </footer>
       </body>
     </html>
   )
 }
+
+export default RootLayout

@@ -4,21 +4,24 @@ import Header from '@/widgets/header/Header'
 import Logo from '@/components/misc/Logo'
 import { Button } from '@/components/ui/button'
 import { TelegramLogo } from '@phosphor-icons/react/dist/ssr'
+import PinGate from '@/widgets/pin/PinGate'
 
 const DEVELOPER_LINK = 'https://t.me/academia_nis'
 
 const Layout: FC<PropsWithChildren> = ({ children }) => {
   return (
-    <>
-      <div className="mx-auto flex w-[92.5%] flex-col justify-center sm:max-w-[47rem]">
+    <PinGate>
+      <div className="page-enter mx-auto flex w-[92.5%] flex-col justify-center sm:max-w-[47rem]">
         <div className="mb-8 flex w-full flex-col">
           <Header />
 
           {children}
         </div>
-
-        <NavBar />
       </div>
+
+      {/* NavBar — вне анимируемого контейнера: transform на предке
+          ломает position: fixed у панели навигации */}
+      <NavBar />
       <footer className="mx-auto mb-3 mt-10 flex w-[92.5%] flex-row items-center justify-between sm:mt-auto sm:max-w-[47rem] sm:flex-row">
         <div className="flex w-fit flex-row items-center pl-2 text-muted-foreground sm:mx-0">
           <Logo width={19} height={19} className="my-0" />
@@ -26,8 +29,13 @@ const Layout: FC<PropsWithChildren> = ({ children }) => {
             adaption
           </p>
         </div>
-        <div className="flex flex-row justify-center text-center">
-          <a href={DEVELOPER_LINK} target="_blank" rel="noopener">
+        <div className="flex flex-row items-center justify-center gap-1 text-center">
+          <a
+            href={DEVELOPER_LINK}
+            target="_blank"
+            rel="noopener"
+            className="transition-opacity hover:opacity-70"
+          >
             <Button variant="link" className="mx-1 p-1 px-2">
               <TelegramLogo size={24} className="mx-1" />
               <span className="hidden sm:flex">Разработчик</span>
@@ -35,7 +43,7 @@ const Layout: FC<PropsWithChildren> = ({ children }) => {
           </a>
         </div>
       </footer>
-    </>
+    </PinGate>
   )
 }
 

@@ -1,29 +1,81 @@
-# Create T3 App
+# adaption — Школьный дневник НИШ
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+[![Build Desktop Apps](https://github.com/ChQynon/123/actions/workflows/build-desktop.yml/badge.svg)](https://github.com/ChQynon/123/actions/workflows/build-desktop.yml)
+[![Build Mobile Apps](https://github.com/ChQynon/123/actions/workflows/build-mobile.yml/badge.svg)](https://github.com/ChQynon/123/actions/workflows/build-mobile.yml)
 
-## What's next? How do I make an app with this?
+Современная кроссплатформенная экосистема для учащихся и родителей НИШ:
+- Журнал оценок и четвертные баллы
+- Интерактивный калькулятор оценок и симулятор СОР / СОЧ
+- Табель и отчёты успеваемости
+- Расписание уроков (EduPage + официальный сервис)
+- Поддержка платформ: **Веб**, **Android**, **iOS**, **Windows (ПК)**, **macOS (Mac)**
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+---
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Контакты и Социальные Сети
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+- 📱 **Telegram разработчиков / Канал**: [@academia_nis](https://t.me/academia_nis)
+- 🌐 **Официальный веб-сайт**: [adaption.top](https://adaption.top)
+- ☕ **Поддержать проект (DonationAlerts)**: [donationalerts.com/r/alyxmp4](https://www.donationalerts.com/r/alyxmp4)
+- 💻 **Репозиторий проекта**: [github.com/ChQynon/123](https://github.com/ChQynon/123)
 
-## Learn More
+---
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+## Архитектура приложений
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+```
+adaption/
+├── src/                  # Веб-версия (Next.js 14 App Router, Tailwind CSS)
+│   ├── app/              # Маршруты страниц (dash, calculator, schedule, reports, settings)
+│   ├── widgets/pin/      # Логика защиты: PinGate, PinLock, PinSetup, PinSettings, PinInput
+│   └── lib/pin/          # Платформенный мост (isApp, supportsBiometric) и SHA-256 криптография
+├── apps/
+│   ├── mobile/           # Мобильное приложение (React Native / Expo SDK 51)
+│   │   ├── app/          # Экраны (auth/login, auth/pin-setup, lock, app/webview)
+│   │   └── eas.json      # Конфигурация облачной сборки EAS (Android APK + iOS IPA)
+│   └── desktop/          # Десктопное приложение (Electron 30)
+│       ├── main.js       # Главный процесс, биометрия Touch ID / Windows Hello, системные окна
+│       └── preload.js    # Безопасный IPC-мост между Electron и веб-контекстом
+└── .github/workflows/    # Автоматическая сборка в облаке GitHub Actions
+    ├── build-desktop.yml # Сборка Windows (.exe), macOS (.dmg) и Linux (.AppImage)
+    └── build-mobile.yml  # Сборка Android (.apk) и iOS (.ipa)
+```
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+---
 
-## How do I deploy this?
+## Безопасность: ПИН-код и Face ID
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+1. **Разграничение Веб и Приложений**:
+   - В **веб-версии** (`adaption.top` в браузере) вход осуществляется по логину (ИИН) и паролю СУШ. Настройки ПИН-кода и Face ID в веб-версии **не отображаются**.
+   - В **версиях приложений** (Android, iOS, ПК, Mac) доступна полноценная биометрическая защита.
+
+2. **Первый запуск приложения**:
+   - После успешного входа по логину/паролю приложение предлагает придумать **4- или 6-значный ПИН-код**.
+   - ПИН-код хэшируется по алгоритму SHA-256 с уникальной случайной солью и сохраняется в защищённом хранилище (`SecureStore` на мобильных, зашифрованный профиль на десктопе).
+
+3. **Последующие запуски**:
+   - Приложение **не требует заново вводить ИИН и пароль**.
+   - Отображается экран блокировки с предложением ввести ПИН-код или подтвердить личность через **Face ID / Touch ID / Windows Hello**.
+   - До ввода верного ПИН-кода или подтверждения биометрии **доступ к данным аккаунта заблокирован**.
+   - При 5 неверных попытках ввода сессия автоматически аннулируется в целях безопасности.
+
+4. **Управление в настройках**:
+   - В настройках приложения доступна смена ПИН-кода (с предварительной проверкой старого).
+   - Возможность включения/выключения Face ID / биометрического входа.
+   - Удаление ПИН-кода.
+
+---
+
+## Автоматическая сборка (GitHub Actions)
+
+В репозитории настроены CI/CD сценарии:
+
+- **Десктоп (ПК и Mac)**: запускается автоматически при создании тега `v*` (например, `v1.0.0`) или вручную во вкладке **Actions** → **Build Desktop Apps**. Формирует готовые установщики для Windows, macOS и Linux.
+- **Мобильные (Android и iOS)**: запускается по тегу или вручную во вкладке **Actions** → **Build Mobile Apps**. Формирует файлы APK для Android и IPA для iOS через EAS.
+
+---
+
+## Лицензия и Разработка
+
+Разработано для сообщества учащихся и родителей НИШ.  
+Связь с разработчиками: Telegram [@academia_nis](https://t.me/academia_nis).

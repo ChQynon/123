@@ -1,0 +1,169 @@
+name: Build Desktop Apps (Windows, macOS, Linux)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - windows
+          - macos
+          - linux
+
+jobs:
+  # ============================================================
+  # Windows — Electron Builder (EXE NSIS + Portable)
+  # ============================================================
+  build-windows:
+    name: Build Windows (PC)
+    runs-on: windows-latest
+    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows' || github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: apps/desktop
+        run: npm install
+
+      - name: Build Windows
+        working-directory: apps/desktop
+        run: npm run build:win
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            apps/desktop/dist/*.exe
+            apps/desktop/dist/*.msi
+
+  # ============================================================
+  # macOS — Electron Builder (DMG + ZIP)
+  # ============================================================
+  build-macos:
+    name: Build macOS (Mac)
+    runs-on: macos-latest
+    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' || github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: apps/desktop
+        run: npm install
+
+      - name: Build macOS
+        working-directory: apps/desktop
+        run: npm run build:mac
+        env:
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: |
+            apps/desktop/dist/*.dmg
+            apps/desktop/dist/*.zip
+
+  # ============================================================
+  # Linux — Electron Builder (AppImage)
+  # ============================================================
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux' || github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: apps/desktop
+        run: npm install
+
+      - name: Build Linux
+        working-directory: apps/desktop
+        run: npm run build:linux
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-installer
+          path: apps/desktop/dist/*.AppImage
+
+  # ============================================================
+  # Release — создание GitHub Release с данными и соцсетями
+  # ============================================================
+  release:
+    name: Create Release
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            windows-installer/*
+            macos-installer/*
+            linux-installer/*
+          body: |
+            ## Релиз десктопных приложений adaption (ПК & Mac)
+
+            Школьный дневник НИШ: оценки, журнал, табель, расписание и калькулятор СОР/СОЧ.
+
+            ### Файлы для скачивания:
+            - **Windows**: `adaption-Setup-*.exe` (установщик NSIS) и `adaption-*.exe` (портативная версия)
+            - **macOS (Mac)**: `adaption-*.dmg` (образ диска) и `adaption-*.zip`
+            - **Linux**: `adaption-*.AppImage`
+
+            ### Функции безопасности:
+            - Установка и смена 4- или 6-значного ПИН-кода при первом входе
+            - Поддержка Face ID / Touch ID (macOS) и Windows Hello (ПК)
+            - Блокировка доступа к аккаунту при отсутствии ПИН-кода
+            - Защита настроек ПИН-кода внутри приложений
+
+            ---
+            ### Контакты и сообщество:
+            - **Telegram**: [@academia_nis](https://t.me/academia_nis)
+            - **Официальный сайт**: [adaption.top](https://adaption.top)
+            - **Поддержать проект**: [DonationAlerts](https://www.donationalerts.com/r/alyxmp4)
+            - **Репозиторий**: [GitHub](https://github.com/ChQynon/123)
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

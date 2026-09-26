@@ -28,6 +28,9 @@ type ResponsiveModalProps = {
   description?: React.ReactNode
   trigger: React.ReactNode
   close?: React.ReactNode
+  /** Управляемый режим (опционально) */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const ResponsiveModal: FC<ResponsiveModalProps> = ({
@@ -36,9 +39,18 @@ const ResponsiveModal: FC<ResponsiveModalProps> = ({
   trigger,
   description,
   title,
+  open: controlledOpen,
+  onOpenChange,
 }) => {
-  const [open, setOpen] = React.useState(false)
+  const [internalOpen, setInternalOpen] = React.useState(false)
   const isDesktop = useMedia('(min-width: 768px)', false)
+
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
+  const setOpen = (value: boolean) => {
+    if (!isControlled) setInternalOpen(value)
+    onOpenChange?.(value)
+  }
 
   if (isDesktop) {
     return (

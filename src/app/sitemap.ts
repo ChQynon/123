@@ -11,6 +11,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/reports',
     '/schedule',
     '/settings',
+    '/privacy',
+    '/terms',
   ]
 
   return routes.map((route) => ({

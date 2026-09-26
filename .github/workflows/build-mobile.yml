@@ -1,0 +1,133 @@
+name: Build Mobile Apps (Android & iOS)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - android
+          - ios
+
+jobs:
+  # ============================================================
+  # Android — EAS Build (APK / AAB)
+  # ============================================================
+  build-android:
+    name: Build Android (APK)
+    runs-on: ubuntu-latest
+    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android' || github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Expo & EAS
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: apps/mobile
+        run: npm install
+
+      - name: Build Android APK
+        working-directory: apps/mobile
+        run: |
+          if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
+            eas build --platform android --profile production --non-interactive
+          else
+            echo "EXPO_TOKEN secret is not set. Please add EXPO_TOKEN in Repository Settings -> Secrets."
+          fi
+        env:
+          EXPO_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.EXPO_ANDROID_KEYSTORE_PASSWORD }}
+          EXPO_ANDROID_KEY_PASSWORD: ${{ secrets.EXPO_ANDROID_KEY_PASSWORD }}
+
+  # ============================================================
+  # iOS — EAS Build (IPA)
+  # ============================================================
+  build-ios:
+    name: Build iOS (IPA)
+    runs-on: macos-latest
+    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios' || github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Expo & EAS
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: apps/mobile
+        run: npm install
+
+      - name: Build iOS IPA
+        working-directory: apps/mobile
+        run: |
+          if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
+            eas build --platform ios --profile production --non-interactive
+          else
+            echo "EXPO_TOKEN secret is not set. Please add EXPO_TOKEN in Repository Settings -> Secrets."
+          fi
+        env:
+          EXPO_IOS_DIST_P12_PASSWORD: ${{ secrets.EXPO_IOS_DIST_P12_PASSWORD }}
+          EXPO_IOS_PROVISIONING_PROFILE: ${{ secrets.EXPO_IOS_PROVISIONING_PROFILE }}
+
+  # ============================================================
+  # Release — заметка о мобильном релизе с соцсетями
+  # ============================================================
+  release-mobile:
+    name: Create Mobile Release Note
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create or Update Release Note
+        uses: softprops/action-gh-release@v1
+        with:
+          body: |
+            ## Релиз мобильных приложений adaption (Android & iOS)
+
+            Школьный дневник НИШ: оценки, журнал, табель, расписание и калькулятор СОР/СОЧ.
+
+            ### Возможности мобильной версии:
+            - **ПИН-код 4 или 6 цифр** при первом входе
+            - **Face ID & Fingerprint** (биометрический вход)
+            - **Безопасное хранилище** (SecureStore)
+            - **Автономный замок**: без ввода ПИН-кода доступ к аккаунту заблокирован
+            - **Управление защитой**: изменение ПИН-кода в настройках приложения
+
+            ---
+            ### Контакты и соцсети:
+            - **Telegram**: [@academia_nis](https://t.me/academia_nis)
+            - **Сайт**: [adaption.top](https://adaption.top)
+            - **Поддержать**: [DonationAlerts](https://www.donationalerts.com/r/alyxmp4)
+            - **GitHub**: [github.com/ChQynon/123](https://github.com/ChQynon/123)
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
