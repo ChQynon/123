@@ -5,6 +5,10 @@ node_modules/
 **/node_modules/
 dist/
 **/dist/
+android/
+**/android/
+ios/
+**/ios/
 .expo/
 **/.expo/
 /.pnp

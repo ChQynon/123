@@ -18,7 +18,7 @@ on:
 
 jobs:
   # ============================================================
-  # Android — EAS Build (APK / AAB)
+  # Android — Прямая сборка APK через Gradle + Android SDK
   # ============================================================
   build-android:
     name: Build Android (APK)
@@ -28,37 +28,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-
       - name: Install dependencies
         working-directory: apps/mobile
         run: npm install
 
-      - name: Build Android APK
+      - name: Prebuild Android project
         working-directory: apps/mobile
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Build Android APK
+        working-directory: apps/mobile/android
         run: |
-          if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
-            eas build --platform android --profile production --non-interactive
-          else
-            echo "⚠️ EXPO_TOKEN secret is not set."
-            echo "To enable automated EAS cloud builds, add EXPO_TOKEN in GitHub Repository Settings -> Secrets and variables -> Actions."
-          fi
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.EXPO_ANDROID_KEYSTORE_PASSWORD }}
-          EXPO_ANDROID_KEY_PASSWORD: ${{ secrets.EXPO_ANDROID_KEY_PASSWORD }}
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Organize APK
+        run: |
+          mkdir -p apps/mobile/dist
+          find apps/mobile/android/app/build/outputs/apk -name "*.apk" -exec cp {} apps/mobile/dist/adaption.apk \;
+          ls -la apps/mobile/dist/
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: apps/mobile/dist/adaption.apk
 
   # ============================================================
-  # iOS — EAS Build (IPA)
+  # iOS — Сборка под iOS (Simulator .app / EAS IPA)
   # ============================================================
   build-ios:
-    name: Build iOS (IPA)
+    name: Build iOS
     runs-on: macos-latest
     if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios' || github.event_name == 'push' || github.event.inputs.platform == ''
     steps:
@@ -70,32 +81,54 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-
       - name: Install dependencies
         working-directory: apps/mobile
         run: npm install
 
-      - name: Build iOS IPA
+      - name: Prebuild iOS project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform ios --clean --no-install
+
+      - name: Build iOS Simulator Package
         working-directory: apps/mobile
         run: |
-          if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
-            eas build --platform ios --profile production --non-interactive
-          else
-            echo "⚠️ EXPO_TOKEN secret is not set."
-            echo "To enable automated EAS cloud builds, add EXPO_TOKEN in GitHub Repository Settings -> Secrets and variables -> Actions."
-          fi
+          mkdir -p dist
+          xcodebuild -workspace ios/adaption.xcworkspace \
+            -scheme adaption \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -derivedDataPath ios/build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            clean build
+          
+          # Архивируем .app для запуска на Mac в симуляторе
+          cd ios/build/Build/Products/Release-iphonesimulator
+          zip -r ../../../../../dist/adaption-ios-simulator.zip adaption.app
+          ls -la ../../../../../dist/
+
+      - name: EAS Build (if EXPO_TOKEN is provided)
+        if: env.EXPO_TOKEN != ''
+        working-directory: apps/mobile
+        run: |
+          npm install -g eas-cli
+          eas build --platform ios --profile production --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_IOS_DIST_P12_PASSWORD: ${{ secrets.EXPO_IOS_DIST_P12_PASSWORD }}
           EXPO_IOS_PROVISIONING_PROFILE: ${{ secrets.EXPO_IOS_PROVISIONING_PROFILE }}
 
+      - name: Upload iOS Simulator Archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-package
+          path: apps/mobile/dist/adaption-ios-simulator.zip
+
   # ============================================================
-  # Release — заметка о мобильном релизе с соцсетями
+  # Release — Прикрепление файлов к GitHub Release
   # ============================================================
   release-mobile:
-    name: Create Mobile Release Note
+    name: Attach to GitHub Release
     needs: [build-android, build-ios]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -103,27 +136,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create or Update Release Note
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Update GitHub Release with Mobile Files
         uses: softprops/action-gh-release@v1
         with:
-          body: |
-            ## Релиз мобильных приложений adaption (Android & iOS)
-
-            Школьный дневник НИШ: оценки, журнал, табель, расписание и калькулятор СОР/СОЧ.
-
-            ### Возможности мобильной версии:
-            - **ПИН-код 4 или 6 цифр** при первом входе
-            - **Face ID & Fingerprint** (биометрический вход)
-            - **Безопасное хранилище** (SecureStore)
-            - **Автономный замок**: без ввода ПИН-кода доступ к аккаунту заблокирован
-            - **Управление защитой**: изменение ПИН-кода в настройках приложения
-
-            ---
-            ### Контакты и соцсети:
-            - **Telegram**: [@academia_nis](https://t.me/academia_nis)
-            - **Сайт**: [adaption.top](https://adaption.top)
-            - **Поддержать**: [DonationAlerts](https://www.donationalerts.com/r/alyxmp4)
-            - **GitHub**: [github.com/ChQynon/123](https://github.com/ChQynon/123)
+          files: |
+            android-apk/*.apk
+            ios-simulator-package/*.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
