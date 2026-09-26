@@ -16,13 +16,77 @@ on:
           - android
           - ios
 
+permissions:
+  contents: write
+
 jobs:
   # ============================================================
-  # EAS Cloud Build — Сборка Android APK и iOS IPA
+  # Android — Прямая сборка APK через Gradle + Android SDK
   # ============================================================
-  build-mobile:
-    name: Build Mobile App (EAS)
+  build-android:
+    name: Build Android (APK)
     runs-on: ubuntu-latest
+    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android' || github.event_name == 'push' || github.event.inputs.platform == ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/mobile
+        run: npm install
+
+      - name: Prebuild Android project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build Android Release APK
+        working-directory: apps/mobile/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Organize APK
+        run: |
+          mkdir -p apps/mobile/dist
+          find apps/mobile/android/app/build/outputs/apk -name "*release*.apk" -exec cp {} apps/mobile/dist/adaption-1.0.0.apk \;
+          if [ ! -f apps/mobile/dist/adaption-1.0.0.apk ]; then
+            find apps/mobile/android/app/build/outputs/apk -name "*.apk" -exec cp {} apps/mobile/dist/adaption-1.0.0.apk \;
+          fi
+          ls -la apps/mobile/dist/
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: apps/mobile/dist/adaption-1.0.0.apk
+
+      - name: Attach APK to GitHub Release
+        continue-on-error: true
+        run: |
+          gh release upload v1.0.0 apps/mobile/dist/adaption-1.0.0.apk --clobber || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================
+  # iOS — Сборка под iOS (Simulator .app + Unsigned .ipa)
+  # ============================================================
+  build-ios:
+    name: Build iOS
+    runs-on: macos-14
+    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios' || github.event_name == 'push' || github.event.inputs.platform == ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,37 +94,92 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/mobile/package-lock.json
 
       - name: Install dependencies
         working-directory: apps/mobile
         run: npm install
 
-      - name: Check EXPO_TOKEN and Build
+      - name: Prebuild iOS project with CocoaPods
         working-directory: apps/mobile
         run: |
-          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
-            echo "============================================================================"
-            echo "⚠️ ОШИБКА: Секрет EXPO_TOKEN не настроен в репозитории!"
-            echo "Для облачной сборки Android APK и iOS IPA выполните 2 шага:"
-            echo "1. Зайдите на https://expo.dev/settings/access-tokens и создайте токен."
-            echo "2. Добавьте его в репозиторий: Settings -> Secrets and variables -> Actions -> EXPO_TOKEN."
-            echo "============================================================================"
-            exit 1
+          npx expo prebuild --platform ios --clean
+          cd ios && pod install && cd ..
+
+      - name: Build iOS Simulator Package
+        working-directory: apps/mobile
+        run: |
+          mkdir -p dist
+          xcodebuild \
+            -workspace ios/adaption.xcworkspace \
+            -scheme adaption \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -derivedDataPath ios/build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            clean build
+          
+          cd ios/build/Build/Products/Release-iphonesimulator
+          zip -r ../../../../../apps/mobile/dist/adaption-1.0.0-ios-simulator.zip adaption.app
+          cd ../../../../..
+          ls -la apps/mobile/dist/
+
+      - name: Build iOS Unsigned IPA (Sideloadable)
+        continue-on-error: true
+        working-directory: apps/mobile
+        run: |
+          xcodebuild \
+            -workspace ios/adaption.xcworkspace \
+            -scheme adaption \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ios/build-device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build || true
+          
+          if [ -d "ios/build-device/Build/Products/Release-iphoneos/adaption.app" ]; then
+            mkdir -p Payload
+            cp -R ios/build-device/Build/Products/Release-iphoneos/adaption.app Payload/
+            zip -r dist/adaption-1.0.0-unsigned.ipa Payload
+            rm -rf Payload
+            ls -la dist/
           fi
 
-          PLATFORM="${{ github.event.inputs.platform }}"
-          if [ -z "$PLATFORM" ] || [ "$PLATFORM" = "all" ]; then
-            eas build --platform all --profile production --non-interactive
-          else
-            eas build --platform "$PLATFORM" --profile production --non-interactive
-          fi
+      - name: Upload iOS Simulator Package Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-package
+          path: apps/mobile/dist/adaption-1.0.0-ios-simulator.zip
+
+      - name: Upload iOS Unsigned IPA Artifact
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-ipa
+          path: apps/mobile/dist/adaption-1.0.0-unsigned.ipa
+
+      - name: Attach iOS Builds to GitHub Release
+        continue-on-error: true
+        run: |
+          gh release upload v1.0.0 apps/mobile/dist/adaption-1.0.0-ios-simulator.zip apps/mobile/dist/adaption-1.0.0-unsigned.ipa --clobber || true
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.EXPO_ANDROID_KEYSTORE_PASSWORD }}
-          EXPO_ANDROID_KEY_PASSWORD: ${{ secrets.EXPO_ANDROID_KEY_PASSWORD }}
-          EXPO_IOS_DIST_P12_PASSWORD: ${{ secrets.EXPO_IOS_DIST_P12_PASSWORD }}
-          EXPO_IOS_PROVISIONING_PROFILE: ${{ secrets.EXPO_IOS_PROVISIONING_PROFILE }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================
+  # Release Summary & Notifications
+  # ============================================================
+  release-summary:
+    name: Finalize Mobile Release
+    needs: [build-android, build-ios]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Status
+        run: |
+          echo "Android status: ${{ needs.build-android.result }}"
+          echo "iOS status: ${{ needs.build-ios.result }}"
