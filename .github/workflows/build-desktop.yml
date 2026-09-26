@@ -24,7 +24,7 @@ jobs:
   build-windows:
     name: Build Windows (PC)
     runs-on: windows-latest
-    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows' || github.event_name == 'push'
+    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows' || github.event_name == 'push' || github.event.inputs.platform == ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install dependencies
         working-directory: apps/desktop
@@ -42,8 +42,6 @@ jobs:
         working-directory: apps/desktop
         run: npm run build:win
         env:
-          CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE }}
-          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Upload artifacts
@@ -60,7 +58,7 @@ jobs:
   build-macos:
     name: Build macOS (Mac)
     runs-on: macos-latest
-    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' || github.event_name == 'push'
+    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' || github.event_name == 'push' || github.event.inputs.platform == ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,7 +66,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install dependencies
         working-directory: apps/desktop
@@ -78,8 +76,6 @@ jobs:
         working-directory: apps/desktop
         run: npm run build:mac
         env:
-          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
-          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Upload artifacts
@@ -96,7 +92,7 @@ jobs:
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
-    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux' || github.event_name == 'push'
+    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux' || github.event_name == 'push' || github.event.inputs.platform == ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -104,7 +100,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install dependencies
         working-directory: apps/desktop
@@ -113,6 +109,8 @@ jobs:
       - name: Build Linux
         working-directory: apps/desktop
         run: npm run build:linux
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
