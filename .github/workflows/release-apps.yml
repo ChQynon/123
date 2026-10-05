@@ -188,6 +188,11 @@ jobs:
           path: release-assets
       - name: Check files and create checksums
         run: |
+          # Match GitHub's normalization of spaces in uploaded asset names.
+          for ASSET in release-assets/*; do
+            NORMALIZED="${ASSET// /.}"
+            if [[ "$ASSET" != "$NORMALIZED" ]]; then mv "$ASSET" "$NORMALIZED"; fi
+          done
           test "$(find release-assets -maxdepth 1 -name '*.exe' | wc -l)" -eq 2
           test "$(find release-assets -maxdepth 1 -name '*.dmg' | wc -l)" -eq 2
           test "$(find release-assets -maxdepth 1 -name '*.apk' | wc -l)" -eq 1
