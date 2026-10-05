@@ -1,11 +1,12 @@
 {
   "name": "adaption-mobile",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit",
     "build:android": "eas build --platform android --profile production",
     "build:ios": "eas build --platform ios --profile production"
   },
@@ -17,9 +18,11 @@
     "expo-crypto": "~13.0.2",
     "expo-linking": "~6.3.1",
     "expo-local-authentication": "~14.0.1",
+    "expo-navigation-bar": "~3.0.7",
     "expo-router": "~3.5.0",
     "expo-secure-store": "~13.0.2",
     "expo-status-bar": "~1.12.1",
+    "expo-system-ui": "~3.0.7",
     "expo-web-browser": "~13.0.3",
     "react": "18.2.0",
     "react-native": "0.74.5",

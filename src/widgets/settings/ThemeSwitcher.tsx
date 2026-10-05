@@ -31,15 +31,15 @@ const ThemeSwitcher = () => {
   }
 
   return (
-    <Tabs defaultValue={theme} onValueChange={changeTheme}>
+    <Tabs value={theme} onValueChange={changeTheme}>
       <TabsList>
-        <TabsTrigger value="light">
+        <TabsTrigger value="light" aria-label="Светлая тема">
           <Sun size={20} />
         </TabsTrigger>
-        <TabsTrigger value="dark">
+        <TabsTrigger value="dark" aria-label="Тёмная тема">
           <Moon size={20} />
         </TabsTrigger>
-        <TabsTrigger value="system">
+        <TabsTrigger value="system" aria-label="Системная тема">
           <Desktop size={20} />
         </TabsTrigger>
       </TabsList>

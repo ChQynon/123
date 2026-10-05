@@ -24,16 +24,37 @@ const PinGate: React.FC<PinGateProps> = ({ children }) => {
   // Нужен mounted чтобы избежать hydration mismatch
   useEffect(() => {
     setMounted(true)
+    const lock = () => {
+      if (isApp()) usePinStore.getState().lock()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') lock()
+    }
+    const onNativeReady = () => {
+      // Android may run the bootstrap at load-end instead of before scripts.
+      // Restore secure PIN data before rendering the authenticated screen.
+      void usePinStore.persist.rehydrate()
+    }
+    window.addEventListener('adaption:lock', lock)
+    window.addEventListener('adaption:native-ready', onNativeReady)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('adaption:lock', lock)
+      window.removeEventListener('adaption:native-ready', onNativeReady)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   // В веб-версии или до монтирования — просто контент
-  if (!mounted || !isApp()) {
+  if (!mounted) return <div className="min-h-screen" aria-busy="true" />
+
+  if (!isApp()) {
     return <>{children}</>
   }
 
   // ПИН не установлен — показываем установку
   if (!isPinSet()) {
-    return <PinSetup onComplete={() => {}} />
+    return <PinSetup />
   }
 
   // ПИН установлен, но заблокирован — показываем блокировку

@@ -1,15 +1,14 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import PinInput from '@/widgets/pin/PinInput'
 import usePinStore, { type PinLength } from '@/lib/hooks/store/usePinStore'
 import { hashPin, generateSalt } from '@/lib/pin/crypto'
-import { Check, ShieldCheck } from '@phosphor-icons/react'
+import { ShieldCheck } from '@phosphor-icons/react'
 
 type PinSetupProps = {
-  onComplete: () => void
+  onComplete?: () => void
 }
 
 type Step = 'choose-length' | 'enter-pin' | 'confirm-pin'
@@ -49,11 +48,15 @@ const PinSetup: React.FC<PinSetupProps> = ({ onComplete }) => {
       const hash = await hashPin(pin, salt)
       setPin(hash, salt, pinLength)
       if (typeof window !== 'undefined') {
-        if ((window as any).electronAPI?.pin) {
-          await (window as any).electronAPI.pin.set({ pinHash: hash, pinSalt: salt, pinLength })
+        if (window.electronAPI?.pin) {
+          await window.electronAPI.pin.set({
+            pinHash: hash,
+            pinSalt: salt,
+            pinLength,
+          })
         }
-        if ((window as any).ReactNativeWebView) {
-          ;(window as any).ReactNativeWebView.postMessage(
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(
             JSON.stringify({
               type: 'pin_sync',
               pinHash: hash,
@@ -64,7 +67,7 @@ const PinSetup: React.FC<PinSetupProps> = ({ onComplete }) => {
           )
         }
       }
-      onComplete()
+      onComplete?.()
     } catch {
       setError('Ошибка при сохранении ПИН-кода')
     } finally {
@@ -97,9 +100,7 @@ const PinSetup: React.FC<PinSetupProps> = ({ onComplete }) => {
             >
               <div>
                 <p className="font-medium">4 цифры</p>
-                <p className="text-xs text-muted-foreground">
-                  Быстрее вводить
-                </p>
+                <p className="text-xs text-muted-foreground">Быстрее вводить</p>
               </div>
               <div className="flex gap-1.5">
                 {[0, 1, 2, 3].map((i) => (
@@ -119,9 +120,7 @@ const PinSetup: React.FC<PinSetupProps> = ({ onComplete }) => {
             >
               <div>
                 <p className="font-medium">6 цифр</p>
-                <p className="text-xs text-muted-foreground">
-                  Надёжнее защита
-                </p>
+                <p className="text-xs text-muted-foreground">Надёжнее защита</p>
               </div>
               <div className="flex gap-1.5">
                 {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -142,8 +141,11 @@ const PinSetup: React.FC<PinSetupProps> = ({ onComplete }) => {
     <div className="flex min-h-screen flex-col items-center justify-center p-6">
       <div className="page-enter">
         <PinInput
+          key={step}
           length={pinLength}
-          title={step === 'enter-pin' ? 'Придумайте ПИН-код' : 'Повторите ПИН-код'}
+          title={
+            step === 'enter-pin' ? 'Придумайте ПИН-код' : 'Повторите ПИН-код'
+          }
           subtitle={
             step === 'enter-pin'
               ? `${pinLength} цифры`

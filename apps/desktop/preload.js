@@ -6,6 +6,9 @@ const platform = process.platform // 'darwin', 'win32', 'linux'
 // Экспортируем API в renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   platform,
+  appearance: {
+    set: (data) => ipcRenderer.invoke('appearance:set', data),
+  },
 
   // Биометрия
   biometric: {

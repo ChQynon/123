@@ -8,6 +8,7 @@ import { isMobile, isDesktop, supportsBiometric } from '@/lib/pin/platform'
 import { logout } from '@/server/actions/logout'
 import { useRouter } from 'next-nprogress-bar'
 import { useQueryClient } from '@tanstack/react-query'
+import { resetAppSecurity } from '@/lib/pin/reset'
 
 type PinLockProps = {
   children: React.ReactNode
@@ -53,7 +54,8 @@ const PinLock: React.FC<PinLockProps> = ({ children }) => {
           // После 5 неудачных попыток — полный выход из аккаунта
           queryClient.removeQueries()
           await logout()
-          router.push('/login')
+          await resetAppSecurity()
+          router.replace('/login')
           return
         }
 

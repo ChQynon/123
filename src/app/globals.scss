@@ -69,10 +69,13 @@
    когда контент меняет высоту при переходах между вкладками */
 html {
   scrollbar-gutter: stable;
+  background-color: hsl(var(--background));
 }
 
 body {
   @apply bg-background text-foreground;
+  isolation: isolate;
+  min-height: 100dvh;
 }
 
 /* ------------------------------------------------------------------ */

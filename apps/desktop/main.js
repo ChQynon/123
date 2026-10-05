@@ -1,4 +1,11 @@
-const { app, BrowserWindow, ipcMain, systemPreferences, shell } = require('electron')
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  systemPreferences,
+  shell,
+  nativeTheme,
+} = require('electron')
 const path = require('path')
 const fs = require('fs')
 
@@ -23,6 +30,20 @@ function saveSettings(settings) {
 }
 
 let mainWindow = null
+const startUrl = process.env.ELECTRON_START_URL || 'https://adaption.top'
+const appOrigin = new URL(startUrl).origin
+
+function isAppUrl(url) {
+  try {
+    return new URL(url).origin === appOrigin
+  } catch {
+    return false
+  }
+}
+
+function openExternal(url) {
+  if (/^(https?:|mailto:|tel:)/.test(url)) void shell.openExternal(url)
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -40,10 +61,9 @@ function createWindow() {
     title: 'adaption — Школьный дневник НИШ',
     autoHideMenuBar: true,
     show: false,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0e1115' : '#f3f5f6',
   })
 
-  const startUrl = process.env.ELECTRON_START_URL || 'https://adaption.top'
   mainWindow.loadURL(startUrl)
 
   mainWindow.once('ready-to-show', () => {
@@ -52,16 +72,26 @@ function createWindow() {
 
   // Перехват внешних ссылок (соцсети, донаты, сайт разработчика)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (
-      url.startsWith('https://t.me') ||
-      url.startsWith('https://github.com') ||
-      url.startsWith('https://www.donationalerts.com') ||
-      !url.includes('adaption.top')
-    ) {
-      shell.openExternal(url)
-      return { action: 'deny' }
-    }
-    return { action: 'allow' }
+    if (isAppUrl(url)) mainWindow.loadURL(url)
+    else openExternal(url)
+    return { action: 'deny' }
+  })
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (isAppUrl(url)) return
+    event.preventDefault()
+    openExternal(url)
+  })
+  mainWindow.webContents.on('will-redirect', (event, url) => {
+    if (!isAppUrl(url)) event.preventDefault()
+  })
+  mainWindow.on('minimize', () => {
+    void mainWindow.webContents.executeJavaScript(
+      "window.dispatchEvent(new Event('adaption:lock'))",
+    )
+  })
+  mainWindow.on('closed', () => {
+    mainWindow = null
   })
 
   // Открываем DevTools в dev режиме
@@ -69,6 +99,20 @@ function createWindow() {
     mainWindow.webContents.openDevTools()
   }
 }
+
+ipcMain.handle('appearance:set', (event, appearance) => {
+  if (
+    event.sender !== mainWindow?.webContents ||
+    !isAppUrl(event.senderFrame?.url)
+  )
+    return
+  if (
+    typeof appearance?.backgroundColor !== 'string' ||
+    !/^rgba?\([\d.,\s]+\)$/.test(appearance.backgroundColor)
+  )
+    return
+  mainWindow.setBackgroundColor(appearance.backgroundColor)
+})
 
 // IPC для биометрии
 ipcMain.handle('biometric:available', async () => {
@@ -80,8 +124,8 @@ ipcMain.handle('biometric:available', async () => {
     }
   }
   if (process.platform === 'win32') {
-    // Windows Hello доступен
-    return true
+    // A Windows Hello verifier is not installed; use the shared PIN screen.
+    return false
   }
   return false
 })
@@ -89,7 +133,9 @@ ipcMain.handle('biometric:available', async () => {
 ipcMain.handle('biometric:authenticate', async () => {
   if (process.platform === 'darwin') {
     try {
-      await systemPreferences.promptTouchID('Разблокировать приложение adaption')
+      await systemPreferences.promptTouchID(
+        'Разблокировать приложение adaption',
+      )
       return { success: true }
     } catch {
       return { success: false }
@@ -97,8 +143,7 @@ ipcMain.handle('biometric:authenticate', async () => {
   }
 
   if (process.platform === 'win32') {
-    // Windows Hello
-    return { success: true }
+    return { success: false }
   }
 
   return { success: false }

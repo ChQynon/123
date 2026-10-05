@@ -11,6 +11,7 @@ import QueryProvider from '@/lib/providers/QueryProvider'
 import TerminalGridBackground from '@/widgets/background/TerminalGridBackground'
 import BootGate from '@/components/misc/BootGate'
 import Logo from '@/components/misc/Logo'
+import AppAppearance from '@/lib/providers/AppAppearance'
 
 export const metadata = {
   metadataBase: new URL('https://adaption.top'),
@@ -83,7 +84,6 @@ const RootLayout: FC<PropsWithChildren> = ({ children }) => {
         <BootGate />
 
         <div
-          vaul-drawer-wrapper=""
           className={cn(
             'relative z-10 flex min-h-screen flex-col font-sans antialiased print:hidden',
           )}
@@ -91,6 +91,7 @@ const RootLayout: FC<PropsWithChildren> = ({ children }) => {
           <ProgressProvider>
             <QueryProvider>
               <ThemeProvider>
+                <AppAppearance />
                 <IconProvider>{children}</IconProvider>
               </ThemeProvider>
             </QueryProvider>

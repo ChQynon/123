@@ -18,6 +18,7 @@ import { useRouter } from 'next-nprogress-bar'
 import { useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import PinSettings from '@/widgets/pin/PinSettings'
+import { resetAppSecurity } from '@/lib/pin/reset'
 
 const Page = () => {
   const { sort, updateSort } = useSettingsStore()
@@ -79,9 +80,11 @@ const Page = () => {
           заново входить в свой аккаунт. Вы уверены?
           <Button
             className="mt-3 w-full"
-            onClick={() => {
+            onClick={async () => {
+              await logout()
               queryClient.removeQueries()
-              logout().then(() => router.push('/login'))
+              await resetAppSecurity()
+              router.replace('/login')
             }}
           >
             Подтвердить выход

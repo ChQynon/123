@@ -11,6 +11,8 @@ export function getPlatform(): Platform {
 
   // React Native WebView
   if ((window as any).ReactNativeWebView || (window as any).__ADAPTION_NATIVE__) {
+    const nativePlatform = (window as any).__ADAPTION_PLATFORM__
+    if (nativePlatform === 'ios' || nativePlatform === 'android') return nativePlatform
     const ua = navigator.userAgent.toLowerCase()
     if (ua.includes('android')) return 'android'
     if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) return 'ios'
@@ -33,7 +35,7 @@ export function getPlatform(): Platform {
     if (ua.includes('windows')) return 'windows'
     return 'linux'
   }
-  if (ua.includes('adaption-mobile') || ua.includes('adaption-app')) {
+  if (ua.includes('adaption-mobile') || ua.includes('adaption-app') || ua.includes('adaptionapp/')) {
     if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) return 'ios'
     return 'android'
   }
@@ -61,6 +63,6 @@ export function isDesktop(): boolean {
 /** Поддерживает ли платформа биометрию */
 export function supportsBiometric(): boolean {
   const p = getPlatform()
-  // FaceID на iOS, Fingerprint/Face Unlock на Android, Windows Hello, Touch ID на Mac
-  return p !== 'web'
+  // Windows/Linux currently have no native biometric verifier.
+  return p === 'ios' || p === 'android' || p === 'macos'
 }

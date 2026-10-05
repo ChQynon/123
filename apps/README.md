@@ -1,130 +1,90 @@
-# Adaption — Платформа и Приложения (Android, iOS, ПК, Mac, Веб)
+# Приложения adaption
 
-Монорепозиторий экосистемы **adaption** (Школьный дневник НИШ):
-- **Веб-версия** (`src/`) — Next.js 14, развёрнута на [adaption.top](https://adaption.top)
-- **Мобильное приложение** (`apps/mobile/`) — React Native (Expo SDK 51) для **Android** (APK/AAB) и **iOS** (IPA)
-- **Десктопное приложение** (`apps/desktop/`) — Electron 30 для **Windows (ПК)**, **macOS (Mac)** и **Linux**
+## Архитектура
 
----
+Все пользовательские страницы находятся в `../src/`. Оболочки загружают
+актуальный сайт `https://adaption.top`, включая авторизацию, ПИН и настройки.
+Обновление опубликованного сайта обновляет интерфейс всех приложений при
+следующей загрузке. Отдельных нативных копий дизайна нет.
 
-## Контакты, Социальные Сети и Поддержка
+- `mobile/`: Expo SDK 51, React Native WebView, Android и iOS.
+- `desktop/`: Electron, Windows и macOS, также сборка Linux.
+- Нативные мосты: цвет системных областей окна, биометрия, сохранение ПИН.
+- Настройка темы принадлежит сайту; оболочки не принуждают тёмную тему.
 
-- **Telegram разработчиков / Сообщество**: [@academia_nis](https://t.me/academia_nis)
-- **Официальный сайт**: [adaption.top](https://adaption.top)
-- **Репозиторий проекта**: [github.com/ChQynon/123](https://github.com/ChQynon/123)
-- **Поддержать разработчиков (DonationAlerts)**: [donationalerts.com/r/alyxmp4](https://www.donationalerts.com/r/alyxmp4)
+## Android и iOS
 
----
-
-## Архитектура защиты: ПИН-код и Face ID / Биометрия
-
-### Разделение по версиям (Строгое разграничение)
-
-1. **Веб-версия (браузеры: Chrome, Safari, Firefox и др.)**:
-   - Авторизация стандартная: по ИИН и паролю СУШ.
-   - **Установка и изменение ПИН-кода/пароля в веб-версии НЕ отображаются** (`isApp() === false`).
-   - Веб-пользователи не видят лишних настроек блокировки устройства.
-
-2. **Версии приложений (Мобильные Android / iOS и Десктоп ПК / Mac)**:
-   - **Первый вход**: После успешной авторизации по ИИН и паролю пользователю предлагается создать **4- или 6-значный ПИН-код**.
-   - **Последующие запуски**: Приложение **НЕ требует вводить ИИН и пароль с нуля**. Вместо этого сразу открывается замок ввода ПИН-кода или запрос **Face ID / Touch ID / Windows Hello**.
-   - **Блокировка доступа**: До тех пор, пока ПИН-код не введён корректно или биометрия не подтверждена, **доступ к аккаунту и данным полностью заблокирован** (`PinGate` / `PinLock`).
-   - **Защита от подбора**: После 5 неудачных попыток ввода ПИН-кода сессия сбрасывается и инициируется полный выход из аккаунта.
-   - **Настройки внутри приложений**:
-     - В разделе «Настройки» отображается блок **«ПИН-код»** и **«Face ID / Биометрия»**.
-     - Пользователь может **изменить ПИН-код** (введя текущий, выбрав новую длину 4/6 и подтвердив).
-     - Пользователь может **включить/выключить Face ID** для мгновенной биометрической разблокировки при входе.
-     - Пользователь может удалить ПИН-код.
-
----
-
-## Быстрый старт
-
-### 1. Веб-версия (Next.js)
-```bash
-pnpm install
-pnpm dev
-```
-Открыть в браузере: `http://localhost:3000`
-
-### 2. Мобильное приложение (Expo / React Native)
-```bash
+```sh
 cd apps/mobile
-npm install
+npm ci
+npm run typecheck
 npx expo start
 ```
-- Для запуска на **Android** (эмулятор или устройство): нажмите `a` или запустите `npm run android`
-- Для запуска на **iOS** (симулятор): нажмите `i` или запустите `npm run ios`
 
-### 3. Десктопное приложение (Electron: Windows / Mac / Linux)
-```bash
+Для проверки локального сайта задайте `EXPO_PUBLIC_APP_URL` перед запуском
+Expo (на физическом телефоне используйте доступный адрес компьютера).
+По умолчанию оболочка всегда открывает производственный сайт.
+
+Проверка JS-пакетов обеих платформ без Android SDK / Xcode:
+
+```sh
+npx expo export --platform android --platform ios --output-dir dist/bundle
+```
+
+Локальная сборка Android требует JDK 17 и Android SDK:
+
+```sh
+npx expo prebuild --platform android
+cd android
+./gradlew assembleRelease
+```
+
+Для облачных подписанных сборок настройте проект Expo/EAS, замените
+`YOUR_EAS_PROJECT_ID` в `app.json` на реальный ID и настройте ключи подписи:
+
+```sh
+npx eas-cli build --platform android --profile production
+npx eas-cli build --platform ios --profile production
+```
+
+Для установки на обычный iPhone нужна подписанная сборка и профиль Apple.
+Локальная сборка iOS требует macOS / Xcode. Архив симулятора и неподписанный
+IPA из GitHub Actions не являются готовой подписанной сборкой для iPhone.
+
+## Windows и macOS
+
+```sh
 cd apps/desktop
-npm install
+npm ci
 npm run dev
-```
-
----
-
-## Сборка релизов (Build)
-
-### Десктопные приложения (Electron Builder)
-
-```bash
-cd apps/desktop
-npm install
-
-# Для Windows (ПК): создаёт инсталлятор .exe (NSIS) и портативную версию
 npm run build:win
-
-# Для macOS (Mac): создаёт DMG-образ и ZIP для Apple Silicon / Intel
 npm run build:mac
-
-# Для Linux: создаёт универсальный .AppImage
-npm run build:linux
-```
-Собранные файлы сохраняются в `apps/desktop/dist/`.
-
-### Мобильные приложения (EAS Build)
-
-```bash
-cd apps/mobile
-npm install
-
-# Сборка Android APK для прямой установки:
-npx eas build --platform android --profile production
-
-# Сборка iOS IPA:
-npx eas build --platform ios --profile production
 ```
 
----
+Выходные файлы: `apps/desktop/dist/` — установщик и portable EXE для Windows,
+DMG и ZIP для macOS. Сборку Mac запускайте на macOS; для распространения
+без предупреждений системы нужны Apple Developer, подпись и нотариализация.
+Для локального сайта перед запуском задайте `ELECTRON_START_URL`.
 
-## Сборка через GitHub Actions (CI/CD)
+## Защита устройства
 
-В репозитории настроены автоматические сценарии сборки в `.github/workflows/`:
+Экран ПИН общий с сайтом, отображается только внутри приложений.
+Мобильные версии вызывают Expo LocalAuthentication (Face ID / отпечаток);
+Mac вызывает настоящий Touch ID. При отсутствии биометрии используется ПИН.
+Windows Hello пока не реализован: оболочка возвращает `success: false`,
+а не разблокирует аккаунт без проверки. При выходе очищается защита
+предыдущего аккаунта, при сворачивании снова показывается экран блокировки.
 
-1. **`.github/workflows/build-desktop.yml`** — Сборка под ПК и Mac:
-   - Собирает установщики под **Windows** (`.exe`, `.msi`), **macOS** (`.dmg`, `.zip`) и **Linux** (`.AppImage`).
-   - Автоматически создаёт релиз на GitHub при пуше тега версии (`git tag v1.0.0 && git push origin v1.0.0`).
-   - Можно запускать вручную через вкладку **Actions** → **Build Desktop Apps** (выбрав платформу `all`, `windows`, `macos` или `linux`).
+## Автоматическая сборка
 
-2. **`.github/workflows/build-mobile.yml`** — Сборка под Android и iOS:
-   - Собирает **Android APK** и **iOS IPA** через EAS.
-   - Публикует заметки о релизе с ссылками на каналы и сайт.
-   - Запускается по тегу `v*` или вручную через **Actions** → **Build Mobile Apps**.
+`.github/workflows/release-apps.yml` запускается по тегу `v*` или вручную.
+Собирает Windows EXE, macOS DMG/ZIP для Intel и Apple Silicon, Android APK,
+iOS unsigned IPA и архив симулятора. После успешных сборок и проверок
+публикует все файлы и SHA-256 суммы в одном GitHub Release.
 
-### Настройка секретов в GitHub
-В настройках вашего репозитория на GitHub (**Settings** → **Secrets and variables** → **Actions**) добавьте:
+Перед выпуском обновите версии в `apps/mobile/package.json`,
+`apps/mobile/app.json` и `apps/desktop/package.json`, а также lock-файлы,
+`android.versionCode` и `ios.buildNumber`. Тег должен совпадать с версией:
+например, `v1.0.1`. Заметки для релиза — в `docs/release-notes.md`.
 
-- `EXPO_TOKEN` — токен с [expo.dev](https://expo.dev/settings/access-tokens) для облачной сборки мобильных приложений
-- `WINDOWS_CERTIFICATE` / `WINDOWS_CERTIFICATE_PASSWORD` *(опционально)* — сертификат цифровой подписи Windows
-- `MACOS_CERTIFICATE` / `MACOS_CERTIFICATE_PASSWORD` *(опционально)* — сертификат Apple Developer
-- `GITHUB_TOKEN` — предоставляется GitHub автоматически для создания релизов
-
----
-
-## Разработчики и сообщество
-
-- **Telegram**: [@academia_nis](https://t.me/academia_nis)
-- **Сайт**: [adaption.top](https://adaption.top)
-- **GitHub**: [github.com/ChQynon/123](https://github.com/ChQynon/123)
+При изменениях только страниц сайта пересборка оболочек не нужна.

@@ -1,9 +1,6 @@
 name: Build Desktop Apps (Windows, macOS, Linux)
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       platform:
@@ -16,6 +13,9 @@ on:
           - windows
           - macos
           - linux
+
+permissions:
+  contents: write
 
 jobs:
   # ============================================================
@@ -121,47 +121,3 @@ jobs:
   # ============================================================
   # Release — создание GitHub Release с данными и соцсетями
   # ============================================================
-  release:
-    name: Create Release
-    needs: [build-windows, build-macos, build-linux]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            windows-installer/*
-            macos-installer/*
-            linux-installer/*
-          body: |
-            ## Релиз десктопных приложений adaption (ПК & Mac)
-
-            Школьный дневник НИШ: оценки, журнал, табель, расписание и калькулятор СОР/СОЧ.
-
-            ### Файлы для скачивания:
-            - **Windows**: `adaption-Setup-*.exe` (установщик NSIS) и `adaption-*.exe` (портативная версия)
-            - **macOS (Mac)**: `adaption-*.dmg` (образ диска) и `adaption-*.zip`
-            - **Linux**: `adaption-*.AppImage`
-
-            ### Функции безопасности:
-            - Установка и смена 4- или 6-значного ПИН-кода при первом входе
-            - Поддержка Face ID / Touch ID (macOS) и Windows Hello (ПК)
-            - Блокировка доступа к аккаунту при отсутствии ПИН-кода
-            - Защита настроек ПИН-кода внутри приложений
-
-            ---
-            ### Контакты и сообщество:
-            - **Telegram**: [@academia_nis](https://t.me/academia_nis)
-            - **Официальный сайт**: [adaption.top](https://adaption.top)
-            - **Поддержать проект**: [DonationAlerts](https://www.donationalerts.com/r/alyxmp4)
-            - **Репозиторий**: [GitHub](https://github.com/ChQynon/123)
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

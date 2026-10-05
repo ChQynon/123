@@ -16,6 +16,8 @@ ios/
 
 # testing
 /coverage
+playwright-report/
+test-results/
 
 # database
 /prisma/db.sqlite

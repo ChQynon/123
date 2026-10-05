@@ -6,7 +6,9 @@ import { Drawer as DrawerPrimitive } from 'vaul'
 import { cn } from '@/lib/utils'
 
 const Drawer = ({
-  shouldScaleBackground = true,
+  // Vaul 0.9 paints body black while scaling. Our transparent wrapper lets
+  // that paint show through, and overlapping drawers can retain it on close.
+  shouldScaleBackground = false,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
   <DrawerPrimitive.Root
@@ -43,7 +45,7 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background',
+        'fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[90dvh] flex-col overflow-y-auto rounded-t-[10px] border bg-background pb-[env(safe-area-inset-bottom)] text-foreground',
         className,
       )}
       {...props}

@@ -1,9 +1,6 @@
 name: Build Mobile Apps (Android & iOS)
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       platform:
@@ -72,13 +69,6 @@ jobs:
         with:
           name: android-apk
           path: apps/mobile/dist/adaption-1.0.0.apk
-
-      - name: Attach APK to GitHub Release
-        continue-on-error: true
-        run: |
-          gh release upload v1.0.0 apps/mobile/dist/adaption-1.0.0.apk --clobber || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================================
   # iOS — Сборка под iOS (Simulator .app + Unsigned .ipa)
@@ -166,13 +156,6 @@ jobs:
         with:
           name: ios-unsigned-ipa
           path: apps/mobile/dist/adaption-1.0.0-unsigned.ipa
-
-      - name: Attach iOS Builds to GitHub Release
-        continue-on-error: true
-        run: |
-          gh release upload v1.0.0 apps/mobile/dist/adaption-1.0.0-ios-simulator.zip apps/mobile/dist/adaption-1.0.0-unsigned.ipa --clobber || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================================
   # Release Summary & Notifications
