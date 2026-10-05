@@ -67,7 +67,7 @@ const jsonLd = {
 
 const RootLayout: FC<PropsWithChildren> = ({ children }) => {
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang="ru" className="bg-background" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
         <script
           type="application/ld+json"

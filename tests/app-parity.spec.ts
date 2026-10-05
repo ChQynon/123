@@ -62,6 +62,12 @@ test('drawer close and navigation preserve the selected page background', async 
   await page.addInitScript(() => localStorage.setItem('theme', 'light'))
   await page.goto('/dash')
   await expect(page.getByText('Физика', { exact: true })).toBeVisible()
+  await expect
+    .poll(async () => {
+      const colors = await palette(page)
+      return colors.root === colors.body && colors.root !== 'rgba(0, 0, 0, 0)'
+    })
+    .toBe(true)
   const before = await palette(page)
   expect(before.body).toBe(before.root)
   expect(before.body).not.toBe('rgb(0, 0, 0)')
