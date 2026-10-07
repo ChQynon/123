@@ -1,5 +1,6 @@
 import axios from 'axios'
-import { LoginHttpResponse } from '@/shared/types'
+import type { LoginHttpResponse } from '@/shared/types'
+import type { InternalAxiosRequestConfig } from 'axios'
 import https from 'https'
 
 const agent = new https.Agent({
@@ -8,7 +9,7 @@ const agent = new https.Agent({
 
 const proxy = axios.create({
   httpsAgent: agent,
-  timeout: 30000,
+  timeout: 15000,
 })
 
 proxy.interceptors.request.use((config) => {
@@ -20,46 +21,49 @@ proxy.interceptors.request.use((config) => {
 export const http = axios.create({
   withCredentials: true,
   httpsAgent: agent,
+  timeout: 20000,
 })
 
-let isRefreshing = false
-let refreshQueue: (() => void)[] = []
+let refreshPromise: Promise<void> | null = null
 
 http.interceptors.response.use(
   (res) => {
     return res
   },
-  async (err) => {
-    const originalConfig = err.config
+  async (err: unknown) => {
+    if (!axios.isAxiosError(err)) return Promise.reject(err)
+    const originalConfig = err.config as
+      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | undefined
 
-    if (err.response?.status === 401 && !originalConfig._retry) {
+    if (err.response?.status === 401 && originalConfig) {
+      if (originalConfig._retry) throw new Error('UNAUTHORIZED')
       originalConfig._retry = true
-
-      if (!isRefreshing) {
-        isRefreshing = true
-
-        try {
-          await axios.request<LoginHttpResponse>({
+      if (!refreshPromise) {
+        refreshPromise = axios
+          .request<LoginHttpResponse>({
             url: '/api/auth/refresh',
             method: 'post',
             withCredentials: true,
+            timeout: 20000,
           })
-
-          refreshQueue.forEach((cb) => cb())
-          refreshQueue = []
-          isRefreshing = false
-
-          return http(originalConfig)
-        } catch (error) {
-          throw new Error('UNAUTHORIZED')
-        }
-      } else {
-        return new Promise((resolve) => {
-          refreshQueue.push(() => {
-            resolve(http(originalConfig))
+          .then(() => undefined)
+          .catch((error: unknown) => {
+            if (
+              axios.isAxiosError(error) &&
+              [400, 401, 403].includes(error.response?.status ?? 0)
+            ) {
+              throw new Error('UNAUTHORIZED')
+            }
+            throw error
           })
-        })
+          .finally(() => {
+            refreshPromise = null
+          })
       }
+      // Every waiting request settles on both success and failure.
+      await refreshPromise
+      return http(originalConfig)
     }
 
     return Promise.reject(err)

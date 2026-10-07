@@ -10,8 +10,10 @@ export type ContingentInfo = {
 export const useContingent = () => {
   return useQuery<ContingentInfo>({
     queryKey: ['contingent'],
-    queryFn: async () =>
-      await http.get<ContingentInfo>('/api/contingent').then((res) => res.data),
+    queryFn: async ({ signal }) =>
+      await http
+        .get<ContingentInfo>('/api/contingent', { signal })
+        .then((res) => res.data),
     staleTime: 1000 * 60 * 60 * 24,
     refetchInterval: false,
   })

@@ -7,6 +7,7 @@ import JournalNotFound from '@/widgets/journal/JournalNotFound'
 import useSettingsStore from '@/lib/hooks/store/useSettingsStore'
 import { Skeleton } from '@/components/ui/skeleton'
 import JournalList from '@/widgets/journal/Journal'
+import { Button } from '@/components/ui/button'
 
 const NUMERALS = {
   1: 'I',
@@ -20,7 +21,13 @@ const Page = () => {
     state.currentQuarter,
     state.setCurrentQuarter,
   ])
-  const { data: journal, isError, isLoading } = useJournal()
+  const {
+    data: journal,
+    isError,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useJournal()
 
   if (isLoading)
     return (
@@ -33,20 +40,36 @@ const Page = () => {
       </div>
     )
 
-  if (isError) {
-    return <JournalNotFound />
+  if (isError && !journal) {
+    return (
+      <div>
+        <JournalNotFound description="Не удалось загрузить оценки. Проверьте подключение и попробуйте снова." />
+        <Button
+          className="mb-24 w-full"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+        >
+          Повторить загрузку
+        </Button>
+      </div>
+    )
   }
 
   return (
-    <div className="page-enter w-full">
-      {journal && journal?.length > 0 && !isError && (
+    <div className="w-full">
+      {isError && journal && (
+        <p role="status" className="mb-2 text-sm text-muted-foreground">
+          Не удалось обновить. Показаны сохранённые оценки.
+        </p>
+      )}
+      {journal && journal?.length > 0 && (
         <Tabs
           value={current}
           className="w-full"
           onValueChange={(value) => setCurrent(value)}
         >
           <TabsList className="mb-2 flex w-full select-none flex-row">
-            {journal!.map((journal, index) => (
+            {journal.map((journal, index) => (
               <TabsTrigger
                 value={journal.number.toString()}
                 className="grow"
@@ -56,7 +79,7 @@ const Page = () => {
               </TabsTrigger>
             ))}
           </TabsList>
-          {journal!.map((journal, index) => (
+          {journal.map((journal, index) => (
             <TabsContent
               key={`tab-content-${index}`}
               value={journal.number.toString()}

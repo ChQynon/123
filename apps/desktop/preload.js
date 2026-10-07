@@ -8,6 +8,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   platform,
   appearance: {
     set: (data) => ipcRenderer.invoke('appearance:set', data),
+    getSystemTheme: () => ipcRenderer.invoke('appearance:system'),
+    onSystemTheme: (callback) => {
+      const handler = (_, theme, reset) => callback(theme, reset)
+      ipcRenderer.on('appearance:system', handler)
+      return () => ipcRenderer.removeListener('appearance:system', handler)
+    },
   },
 
   // Биометрия

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { FC, PropsWithChildren, useState } from 'react'
+import React, { type FC, type PropsWithChildren, useState } from 'react'
 import { QueryClient } from '@tanstack/react-query'
 import { IDBQueryPersistor } from '@/lib/utils'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
@@ -16,7 +16,9 @@ const QueryProvider: FC<PropsWithChildren> = ({ children }) => {
           queries: {
             refetchOnWindowFocus: false,
             retry: false,
-            refetchInterval: 300000, // 5 mins
+            staleTime: 60000,
+            gcTime: 1000 * 60 * 60 * 24,
+            refetchInterval: false,
             throwOnError: (error) => {
               if (error.message === 'UNAUTHORIZED') {
                 queryClient.removeQueries()
@@ -30,7 +32,7 @@ const QueryProvider: FC<PropsWithChildren> = ({ children }) => {
       }),
   )
 
-  const persister = IDBQueryPersistor()
+  const [persister] = useState(() => IDBQueryPersistor())
 
   return (
     <PersistQueryClientProvider

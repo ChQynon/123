@@ -8,10 +8,12 @@ import { Schedule } from '@/shared/types'
 export const useSchedule = (date?: string) => {
   return useQuery<Schedule>({
     queryKey: ['schedule', date ?? null],
-    queryFn: async () =>
+    queryFn: async ({ signal }) =>
       await http
         .get<Schedule>('/api/schedule', {
           params: date ? { date } : {},
+          signal,
+          timeout: 60000,
         })
         .then((res) => res.data),
     /*

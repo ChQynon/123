@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { DownloadSimple } from '@phosphor-icons/react'
-import { ReportCard } from '@/shared/types'
+import type { ReportCard } from '@/shared/types'
 import ReportTable from '@/widgets/reports/ReportTable'
 
 const Page = () => {
@@ -26,7 +26,7 @@ const Page = () => {
     useState<ReportCard[number]>()
   const [printYear, setPrintYear] = useState<ReportCard[number]>()
 
-  if (isError) return <ReportCardError />
+  if (isError && !data) return <ReportCardError />
   if (isLoading) return <ReportsLoading />
   if (!data) return null
 
@@ -37,6 +37,11 @@ const Page = () => {
 
   return (
     <div className="page-enter sm:mb-[3.5rem]">
+      {isError && (
+        <p role="status" className="mb-2 text-sm text-muted-foreground">
+          Не удалось обновить. Показан сохранённый табель.
+        </p>
+      )}
       <div className="flex flex-row items-center gap-2">
         <Select
           value={activeSchoolYear?.schoolYear.id}
@@ -64,9 +69,7 @@ const Page = () => {
           variant="outline"
           className="shrink-0 whitespace-nowrap"
           disabled={!!printYear}
-          onClick={() =>
-            activeSchoolYear && setPrintYear(activeSchoolYear)
-          }
+          onClick={() => activeSchoolYear && setPrintYear(activeSchoolYear)}
         >
           <DownloadSimple size={16} className="mr-1.5" />
           {printYear ? 'Формирую…' : 'Скачать PDF'}

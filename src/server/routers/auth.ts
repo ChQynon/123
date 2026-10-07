@@ -1,9 +1,10 @@
 import { Hono } from 'hono'
-import { getCookie } from 'hono/cookie'
+import { getCookie, deleteCookie } from 'hono/cookie'
 import { HTTPException } from 'hono/http-exception'
 import { decompress } from '@/lib/token/compressor'
 import { refreshToken } from '@/features/refreshToken'
 import { generate } from '@/lib/token/issuer'
+import { isAxiosError } from 'axios'
 
 const app = new Hono()
 
@@ -11,17 +12,9 @@ app.post('/refresh', async (c) => {
   const cookie = getCookie(c, 'Refresh')
 
   if (!cookie || cookie.split('::').length !== 2) {
-    throw new HTTPException(400, {
-      res: Response.json(
-        {
-          message: 'Bad request',
-          cause: 'Refresh token is either invalid or expired',
-        },
-        {
-          status: 400,
-        },
-      ),
-    })
+    deleteCookie(c, 'Access', { path: '/' })
+    deleteCookie(c, 'Refresh', { path: '/' })
+    return c.json({ message: 'Unauthorized' }, 401)
   }
 
   const [compressedRefreshToken, device] = cookie.split('::')
@@ -61,13 +54,18 @@ app.post('/refresh', async (c) => {
       },
     )
   } catch (e) {
-    throw new HTTPException(500, {
+    if (isAxiosError(e) && [400, 401, 403].includes(e.response?.status ?? 0)) {
+      deleteCookie(c, 'Access', { path: '/' })
+      deleteCookie(c, 'Refresh', { path: '/' })
+      return c.json({ message: 'Unauthorized' }, 401)
+    }
+    throw new HTTPException(503, {
       res: Response.json(
         {
           message: 'Internal server error',
         },
         {
-          status: 500,
+          status: 503,
         },
       ),
     })

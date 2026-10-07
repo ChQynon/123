@@ -1,4 +1,4 @@
-import React, { FC, PropsWithChildren } from 'react'
+import React, { type FC, type PropsWithChildren } from 'react'
 import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
@@ -79,6 +79,11 @@ const RootLayout: FC<PropsWithChildren> = ({ children }) => {
         <div id="boot-splash" aria-hidden>
           <Logo width={72} height={72} className="my-0" />
         </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__ADAPTION_BOOT_TIMER__=setTimeout(function(){var s=document.getElementById('boot-splash');if(s&&!s.classList.contains('boot-splash-out')){s.removeAttribute('aria-hidden');s.style.flexDirection='column';s.innerHTML='<p>Не удалось запустить дневник. Проверьте подключение.</p><button onclick="location.reload()" style="margin:16px;padding:12px;color:inherit;border:1px solid;border-radius:8px">Повторить попытку</button>'}},20000)`,
+          }}
+        />
 
         <TerminalGridBackground />
         <BootGate />

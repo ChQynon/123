@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
+import {
+  createBootstrap,
+  createThemeUpdate,
+} from '../apps/mobile/lib/webview-bootstrap'
 
 const pin = {
   pinHash: createHash('sha256').update('test-salt:1234').digest('hex'),
@@ -239,4 +243,103 @@ test('first app login creates and confirms the PIN using the shared website scre
   await expect(
     page.getByRole('heading', { name: 'Введите ПИН-код' }),
   ).toBeVisible()
+})
+
+test('app launch and foreground use the device theme even with a conflicting saved preference', async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.addInitScript(() => {
+    localStorage.setItem('theme', 'light')
+    ;(window as any).__messages = []
+    window.ReactNativeWebView = {
+      postMessage: (message) =>
+        (window as any).__messages.push(JSON.parse(message)),
+    }
+  })
+  await page.addInitScript(
+    createBootstrap('http://localhost:3000', 'ios', 'dark', null),
+  )
+  await page.goto('/login')
+  await expect(
+    page.getByRole('heading', { name: 'Вход', exact: true }),
+  ).toBeVisible()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  expect(await page.evaluate(() => localStorage.getItem('theme'))).toBe(
+    'system',
+  )
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as any).__messages.some(
+          (message: any) => message.type === 'app_ready',
+        ),
+      ),
+    )
+    .toBe(true)
+  await page.evaluate(createThemeUpdate('light', true))
+  await expect(page.locator('html')).toHaveClass(/light/)
+  await page.evaluate(createThemeUpdate('dark', true))
+  await expect(page.locator('html')).toHaveClass(/dark/)
+})
+
+test('unavailable IndexedDB does not prevent loading journal data', async ({
+  page,
+}) => {
+  await fixtures(page)
+  await page.addInitScript(() => {
+    Object.defineProperty(indexedDB, 'open', {
+      value: () => {
+        throw new DOMException('Storage blocked', 'SecurityError')
+      },
+    })
+  })
+  await page.goto('/dash')
+  await expect(page.getByText('Физика', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Настройки' }).click()
+  await expect(page.getByRole('tab', { name: 'Системная тема' })).toBeVisible()
+  await page.getByRole('link', { name: 'Главная' }).click()
+  await expect(page.getByText('Физика', { exact: true })).toBeVisible()
+})
+
+test('expired session with no refresh token exits to login without a redirect loop', async ({
+  page,
+  context,
+}) => {
+  const expired = await page.request.post('/api/auth/refresh', {
+    timeout: 45000,
+  })
+  expect(expired.status()).toBe(401)
+  await fixtures(page)
+  await page.route('**/api/contingent', (route) =>
+    route.fulfill({ status: 401, json: {} }),
+  )
+  await page.route('**/api/journal', (route) =>
+    route.fulfill({ status: 401, json: {} }),
+  )
+  await page.route('**/api/auth/refresh', (route) => route.continue())
+  await page.goto('/dash')
+  await expect(
+    page.getByRole('heading', { name: 'Вход', exact: true }),
+  ).toBeVisible()
+  expect(
+    (await context.cookies()).some((cookie) => cookie.name === 'Access'),
+  ).toBe(false)
+  await expect(page).toHaveURL(/\/login$/)
+})
+
+test('decorative canvas limits its backing surface on high DPI screens', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/login')
+  const resolution = await page
+    .locator('canvas')
+    .evaluate((canvas: HTMLCanvasElement) => ({
+      width: canvas.width,
+      cssWidth: canvas.getBoundingClientRect().width,
+    }))
+  expect(resolution.width).toBeLessThanOrEqual(
+    Math.ceil(resolution.cssWidth * 1.5),
+  )
 })

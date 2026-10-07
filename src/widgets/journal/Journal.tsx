@@ -35,9 +35,9 @@ const JournalList: FC<JournalProps> = ({ journal }) => {
   return (
     <>
       {sortedJournal.length > 0 ? (
-        sortedJournal.map((subject, index) => (
+        sortedJournal.map((subject) => (
           <JournalElement
-            key={`journal-element-${index}`}
+            key={subject.id}
             subject={subject.name.ru}
             subjectId={subject.id}
             quarter={journal.number.toString()}

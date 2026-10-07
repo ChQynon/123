@@ -30,6 +30,7 @@ function saveSettings(settings) {
 }
 
 let mainWindow = null
+nativeTheme.themeSource = 'system'
 const startUrl = process.env.ELECTRON_START_URL || 'https://adaption.top'
 const appOrigin = new URL(startUrl).origin
 
@@ -64,11 +65,42 @@ function createWindow() {
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#0e1115' : '#f3f5f6',
   })
 
-  mainWindow.loadURL(startUrl)
+  void mainWindow.loadURL(startUrl).catch(() => {})
+
+  const showRetry = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    const dark = nativeTheme.shouldUseDarkColors
+    const page = `<html lang="ru"><meta name="viewport" content="width=device-width"><body style="background:${dark ? '#0e1115' : '#f3f5f6'};color:${dark ? '#ebedf1' : '#152235'};font:18px system-ui;display:grid;place-content:center;height:90vh;text-align:center"><h1>Не удалось загрузить дневник</h1><p>Проверьте подключение к интернету.</p><a style="color:#4597f7" href="${startUrl}">Повторить попытку</a></body></html>`
+    void mainWindow
+      .loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(page)}`)
+      .catch(() => {})
+    mainWindow.show()
+  }
+  let loadTimer = setTimeout(showRetry, 20000)
+  mainWindow.webContents.on('dom-ready', () => clearTimeout(loadTimer))
+  mainWindow.webContents.on(
+    'did-start-navigation',
+    (_, url, isInPlace, isMainFrame) => {
+      if (!isMainFrame || isInPlace || !isAppUrl(url)) return
+      clearTimeout(loadTimer)
+      loadTimer = setTimeout(showRetry, 20000)
+    },
+  )
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_, code, description, url, isMainFrame) => {
+      if (!isMainFrame || code === -3 || !isAppUrl(url)) return
+      clearTimeout(loadTimer)
+      showRetry()
+    },
+  )
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
   })
+  const showTimer = setTimeout(() => {
+    mainWindow?.show()
+  }, 1500)
 
   // Перехват внешних ссылок (соцсети, донаты, сайт разработчика)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -90,7 +122,16 @@ function createWindow() {
       "window.dispatchEvent(new Event('adaption:lock'))",
     )
   })
+  mainWindow.on('focus', () => {
+    mainWindow?.webContents.send(
+      'appearance:system',
+      nativeTheme.shouldUseDarkColors ? 'dark' : 'light',
+      true,
+    )
+  })
   mainWindow.on('closed', () => {
+    clearTimeout(showTimer)
+    clearTimeout(loadTimer)
     mainWindow = null
   })
 
@@ -115,6 +156,16 @@ ipcMain.handle('appearance:set', (event, appearance) => {
 })
 
 // IPC для биометрии
+ipcMain.handle('appearance:system', () =>
+  nativeTheme.shouldUseDarkColors ? 'dark' : 'light',
+)
+nativeTheme.on('updated', () => {
+  mainWindow?.webContents.send(
+    'appearance:system',
+    nativeTheme.shouldUseDarkColors ? 'dark' : 'light',
+  )
+})
+
 ipcMain.handle('biometric:available', async () => {
   if (process.platform === 'darwin') {
     try {

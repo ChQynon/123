@@ -5,9 +5,11 @@ import { Journal } from '@/shared/types'
 export const useJournal = () => {
   return useQuery<Journal>({
     queryKey: ['journal'],
-    queryFn: async () =>
-      await http.get<Journal>('/api/journal').then((res) => res.data),
-    staleTime: 1000 * 30,
-    refetchInterval: 1000 * 30,
+    queryFn: async ({ signal }) =>
+      await http
+        .get<Journal>('/api/journal', { signal })
+        .then((res) => res.data),
+    staleTime: 60000,
+    refetchInterval: 120000,
   })
 }

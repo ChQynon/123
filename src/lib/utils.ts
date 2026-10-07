@@ -2,7 +2,7 @@ import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { type CityAbbr, type CityFullName } from '@/shared/constants/cities'
 import { del, get, set } from 'idb-keyval'
-import {
+import type {
   PersistedClient,
   Persister,
 } from '@tanstack/react-query-persist-client'
@@ -27,15 +27,33 @@ export const getCityByScheduleUrl = (url: string): CityFullName => {
 }
 
 export function IDBQueryPersistor(idbValidKey: IDBValidKey = 'query:root') {
+  const bounded = async <T>(
+    operation: () => Promise<T>,
+    fallback: T,
+  ): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      return await Promise.race([
+        operation().catch(() => fallback),
+        new Promise<T>((resolve) => {
+          timer = setTimeout(() => resolve(fallback), 1500)
+        }),
+      ])
+    } catch {
+      return fallback
+    } finally {
+      clearTimeout(timer)
+    }
+  }
   return {
     persistClient: async (client: PersistedClient) => {
-      await set(idbValidKey, client)
+      await bounded(() => set(idbValidKey, client), undefined)
     },
     restoreClient: async () => {
-      return await get<PersistedClient>(idbValidKey)
+      return await bounded(() => get<PersistedClient>(idbValidKey), undefined)
     },
     removeClient: async () => {
-      await del(idbValidKey)
+      await bounded(() => del(idbValidKey), undefined)
     },
   } as Persister
 }

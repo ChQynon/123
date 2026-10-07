@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes'
 
 /** The website owns the palette; native shells only colour their window chrome. */
 export default function AppAppearance() {
-  const { resolvedTheme } = useTheme()
+  const { resolvedTheme, forcedTheme } = useTheme()
 
   useEffect(() => {
     const root = document.documentElement
@@ -43,13 +43,17 @@ export default function AppAppearance() {
     })
     window.addEventListener('adaption:native-ready', schedule)
     schedule()
+    // Do not keep native navigation covered while images/requests finish.
+    window.ReactNativeWebView?.postMessage(
+      JSON.stringify({ type: 'app_ready' }),
+    )
     return () => {
       observer.disconnect()
       window.removeEventListener('adaption:native-ready', schedule)
       cancelAnimationFrame(frame)
       window.clearTimeout(timer)
     }
-  }, [resolvedTheme])
+  }, [resolvedTheme, forcedTheme])
 
   return null
 }

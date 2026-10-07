@@ -5,9 +5,11 @@ import { ReportCard } from '@/shared/types'
 export const useReports = () => {
   return useQuery<ReportCard>({
     queryKey: ['reports'],
-    queryFn: async () =>
-      await http.get<ReportCard>('/api/reports').then((res) => res.data),
-    staleTime: 1000 * 30,
-    refetchInterval: 1000 * 30,
+    queryFn: async ({ signal }) =>
+      await http
+        .get<ReportCard>('/api/reports', { signal })
+        .then((res) => res.data),
+    staleTime: 60000,
+    refetchInterval: 120000,
   })
 }

@@ -108,17 +108,15 @@ body {
   from {
     opacity: 0;
     transform: translateY(10px);
-    filter: blur(4px);
   }
   to {
     opacity: 1;
     transform: none;
-    filter: none;
   }
 }
 
 .fade-up {
-  animation: fade-up 420ms var(--ease-smooth-out) both;
+  animation: fade-up 220ms var(--ease-smooth-out) both;
 }
 
 /* Лёгкий переход между вкладками: коротко, без blur и без
@@ -142,29 +140,29 @@ body {
 }
 
 .stagger-fade-up > * {
-  animation: fade-up 420ms var(--ease-smooth-out) both;
+  animation: fade-up 220ms var(--ease-smooth-out) both;
 }
 
 .stagger-fade-up > :nth-child(2) {
-  animation-delay: 55ms;
+  animation-delay: 22ms;
 }
 .stagger-fade-up > :nth-child(3) {
-  animation-delay: 110ms;
+  animation-delay: 44ms;
 }
 .stagger-fade-up > :nth-child(4) {
-  animation-delay: 165ms;
+  animation-delay: 66ms;
 }
 .stagger-fade-up > :nth-child(5) {
-  animation-delay: 220ms;
+  animation-delay: 88ms;
 }
 .stagger-fade-up > :nth-child(6) {
-  animation-delay: 275ms;
+  animation-delay: 110ms;
 }
 .stagger-fade-up > :nth-child(7) {
-  animation-delay: 330ms;
+  animation-delay: 132ms;
 }
 .stagger-fade-up > :nth-child(n + 8) {
-  animation-delay: 385ms;
+  animation-delay: 154ms;
 }
 
 /* Плавное появление оверлеев (генерация PDF и т.п.) */
@@ -279,9 +277,10 @@ body {
 
 /* Плавная смена темы: класс вешается на <html> на время переключения */
 html.theme-switching,
-html.theme-switching *,
-html.theme-switching *::before,
-html.theme-switching *::after {
+html.theme-switching body,
+html.theme-switching nav,
+html.theme-switching [role='dialog'],
+html.theme-switching .bg-card\/80 {
   transition:
     background-color 420ms var(--ease-smooth-out),
     border-color 420ms var(--ease-smooth-out),
@@ -292,8 +291,7 @@ html.theme-switching *::after {
 
 /* 3.2 — бегущий блик по тексту; параметризуется --spread/--shimmer-duration */
 .shimmer-text {
-  background-image:
-    linear-gradient(
+  background-image: linear-gradient(
       90deg,
       transparent calc(50% - var(--spread, 24px)),
       hsl(var(--content-hsl)) calc(50%),
@@ -439,8 +437,19 @@ svg {
 }
 
 /* Плавное появление оверлеев Radix (модалки, дропдауны) */
-[data-state='open'] {
-  animation: overlay-fade 180ms var(--ease-smooth-out);
+@media (pointer: coarse) {
+  .backdrop-blur-sm {
+    backdrop-filter: none;
+  }
+  .backdrop-blur-md {
+    backdrop-filter: blur(4px);
+  }
+  button,
+  a,
+  [role='button'] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
 }
 
 /* Плавный hover для ссылок навбара */
@@ -474,13 +483,16 @@ tbody tr {
 }
 
 @keyframes shake {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
   }
-  20%, 60% {
+  20%,
+  60% {
     transform: translateX(-8px);
   }
-  40%, 80% {
+  40%,
+  80% {
     transform: translateX(8px);
   }
 }
