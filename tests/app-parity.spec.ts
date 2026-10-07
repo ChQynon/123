@@ -1,9 +1,13 @@
 import { test, expect, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
-import {
-  createBootstrap,
-  createThemeUpdate,
-} from '../apps/mobile/lib/webview-bootstrap'
+import * as nativeBootstrap from '../apps/mobile/lib/webview-bootstrap'
+
+// The Expo package is CommonJS; Node's ESM loader exposes it under default.
+const bootstrapModule = nativeBootstrap as typeof nativeBootstrap & {
+  default?: typeof nativeBootstrap
+}
+const { createBootstrap, createThemeUpdate } =
+  bootstrapModule.default ?? bootstrapModule
 
 const pin = {
   pinHash: createHash('sha256').update('test-salt:1234').digest('hex'),
