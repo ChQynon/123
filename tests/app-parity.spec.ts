@@ -1,13 +1,25 @@
 import { test, expect, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
-import * as nativeBootstrap from '../apps/mobile/lib/webview-bootstrap'
+import { readFileSync } from 'node:fs'
+import { runInNewContext } from 'node:vm'
+import ts from 'typescript'
 
-// The Expo package is CommonJS; Node's ESM loader exposes it under default.
-const bootstrapModule = nativeBootstrap as typeof nativeBootstrap & {
-  default?: typeof nativeBootstrap
+// Compile the actual Expo helper without crossing ESM/CommonJS package loaders.
+const bootstrapModule = {
+  exports: {} as typeof import('../apps/mobile/lib/webview-bootstrap'),
 }
-const { createBootstrap, createThemeUpdate } =
-  bootstrapModule.default ?? bootstrapModule
+const bootstrapSource = readFileSync(
+  new URL('../apps/mobile/lib/webview-bootstrap.ts', import.meta.url),
+  'utf8',
+)
+const bootstrapCode = ts.transpileModule(bootstrapSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS },
+}).outputText
+runInNewContext(bootstrapCode, {
+  module: bootstrapModule,
+  exports: bootstrapModule.exports,
+})
+const { createBootstrap, createThemeUpdate } = bootstrapModule.exports
 
 const pin = {
   pinHash: createHash('sha256').update('test-salt:1234').digest('hex'),
